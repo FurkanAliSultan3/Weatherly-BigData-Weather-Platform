@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Varuna — National Weather Intelligence Platform</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0A0F16;
+    --panel:#0F1620;
+    --panel-alt:#141D2A;
+    --panel-raised:#182231;
+    --border:#233042;
+    --border-soft:#1B2530;
+    --text:#E8EDF3;
+    --text-dim:#8CA0B5;
+    --text-faint:#5B6C80;
+
+    --cyan:#3FD9C7;
+    --blue:#5B93FF;
+    --grey:#8CA0B5;
+    --red:#E8564A;
+
+    --ev-flood:#5B93FF;
+    --ev-rain:#3FD9C7;
+    --ev-storm:#A98CFF;
+    --ev-heat:#F0885A;
+    --ev-fog:#9AABBE;
+    --ev-dust:#D2A85E;
+    --ev-wind:#6FC9DE;
+  }
+
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'IBM Plex Sans', sans-serif;
+    overflow:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+  .mono{font-family:'IBM Plex Mono', monospace;}
+
+  /* ---------- App shell ---------- */
+  .app{
+    display:flex;
+    flex-direction:column;
+    height:100vh;
+    min-width:1100px;
+  }
+
+  /* ---------- Header ---------- */
+  header{
+    height:64px;
+    flex-shrink:0;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:0 24px;
+    border-bottom:1px solid var(--border-soft);
+    background:var(--panel);
+  }
+  .brand{display:flex; align-items:center; gap:12px;}
+  .brand-mark{
+    width:34px; height:34px; border-radius:50%;
+    border:1.5px solid var(--cyan);
+    position:relative;
+    flex-shrink:0;
+  }
+  .brand-mark::before{
+    content:"";
+    position:absolute; inset:8px;
+    border-radius:50%;
+    border:1px solid rgba(63,217,199,0.35);
+  }
+  .brand-mark::after{
+    content:"";
+    position:absolute;
+    top:50%; left:50%;
+    width:13px; height:1.5px;
+    background:linear-gradient(90deg, var(--cyan), transparent);
+    transform-origin:left center;
+    animation:sweep 3.2s linear infinite;
+  }
+  @keyframes sweep{ to{ transform:rotate(360deg); } }
+  .brand-text h1{
+    font-size:17px; font-weight:600; letter-spacing:0.2px; line-height:1.1;
+  }
+  .brand-text p{
+    font-size:11.5px; color:var(--text-dim); margin-top:2px; font-weight:400;
+  }
+
+  .header-right{display:flex; align-items:center; gap:20px;}
+  .clock{font-size:12.5px; color:var(--text-dim);}
+  .clock span{color:var(--text);}
+
+  .btn{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:12.5px;
+    font-weight:500;
+    color:var(--text);
+    background:var(--panel-raised);
+    border:1px solid var(--border);
+    padding:8px 14px;
+    border-radius:7px;
+    cursor:pointer;
+    transition:border-color .15s ease, background .15s ease;
+  }
+  .btn:hover{ border-color:var(--cyan); background:#182535; }
+
+  /* ---------- Demo notice ---------- */
+  .notice{
+    flex-shrink:0;
+    background:#12181F;
+    border-bottom:1px solid var(--border-soft);
+    padding:7px 24px;
+    font-size:11.5px;
+    color:var(--text-faint);
+    display:flex; align-items:center; gap:8px;
+  }
+  .notice .dot{
+    width:5px; height:5px; border-radius:50%; background:var(--text-faint); flex-shrink:0;
+  }
+
+  /* ---------- Main layout ---------- */
+  .main{
+    flex:1;
+    display:flex;
+    min-height:0;
+  }
+
+  /* ---------- Sidebar ---------- */
+  .sidebar{
+    width:280px;
+    flex-shrink:0;
+    background:var(--panel);
+    border-right:1px solid var(--border-soft);
+    overflow-y:auto;
+    padding:20px 18px 24px;
+  }
+  .side-section{ margin-bottom:26px; }
+  .side-section h3{
+    font-size:12.5px;
+    font-weight:600;
+    color:var(--text);
+    margin-bottom:12px;
+  }
+  .chip-row{ display:flex; flex-wrap:wrap; gap:7px; }
+  .chip{
+    font-size:11.5px;
+    font-family:'IBM Plex Sans', sans-serif;
+    padding:6px 10px;
+    border-radius:15px;
+    border:1px solid var(--border);
+    background:var(--panel-alt);
+    color:var(--text-dim);
+    cursor:pointer;
+    display:flex; align-items:center; gap:6px;
+    transition:all .12s ease;
+    user-select:none;
+  }
+  .chip:hover{ border-color:var(--text-faint); }
+  .chip.active{
+    background:rgba(63,217,199,0.12);
+    border-color:var(--cyan);
+    color:var(--text);
+  }
+  .chip .swatch{
+    width:7px; height:7px; border-radius:50%; flex-shrink:0;
+  }
+  .chip.date-chip.active{
+    background:rgba(91,147,255,0.14);
+    border-color:var(--blue);
+  }
+
+  .search-box{
+    display:flex; align-items:center;
+    background:var(--panel-alt);
+    border:1px solid var(--border);
+    border-radius:7px;
+    padding:8px 10px;
+    gap:8px;
+  }
+  .search-box input{
+    background:none; border:none; outline:none;
+    color:var(--text); font-size:12.5px; width:100%;
+    font-family:'IBM Plex Sans', sans-serif;
+  }
+  .search-box input::placeholder{ color:var(--text-faint); }
+  .search-box svg{ flex-shrink:0; opacity:0.5; }
+
+  .stat-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .stat-card{
+    background:var(--panel-alt);
+    border:1px solid var(--border-soft);
+    border-radius:8px;
+    padding:12px;
+  }
+  .stat-card.wide{ grid-column:1 / -1; }
+  .stat-card .num{ font-size:20px; font-weight:600; }
+  .stat-card .num.cyan{ color:var(--cyan); }
+  .stat-card .num.red{ color:var(--red); }
+  .stat-card .lbl{ font-size:11px; color:var(--text-dim); margin-top:3px; }
+
+  .legend{ display:flex; flex-direction:column; gap:7px; }
+  .legend-row{ display:flex; align-items:center; gap:8px; font-size:11.5px; color:var(--text-dim); }
+  .legend-row .swatch{ width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .legend-ring-row{ display:flex; align-items:center; gap:8px; font-size:11px; color:var(--text-faint); margin-top:10px; padding-top:10px; border-top:1px solid var(--border-soft);}
+  .ring-demo{ width:12px; height:12px; border-radius:50%; flex-shrink:0; }
+
+  /* ---------- Map area ---------- */
+  .map-wrap{
+    flex:1;
+    position:relative;
+    background:
+      radial-gradient(ellipse at 50% 35%, rgba(63,217,199,0.05), transparent 60%),
+      var(--bg);
+    overflow:hidden;
+  }
+  .map-grid{
+    position:absolute; inset:0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+    background-size:36px 36px;
+  }
+  svg.india{
+    position:absolute;
+    top:50%; left:50%;
+    transform:translate(-50%,-50%);
+    height:92%;
+    width:auto;
+  }
+  .india-outline{
+    fill:#101B27;
+    stroke:#26384A;
+    stroke-width:1.2;
+  }
+  .pin{ cursor:pointer; }
+  .pin circle.core{ transition:r .12s ease; }
+  .pin:hover circle.core{ filter:brightness(1.3); }
+  .pin.selected circle.ring{ stroke-width:2.5; }
+  .pin.pulse circle.pulse-ring{
+    animation:pulse 1.8s ease-out infinite;
+    transform-origin:center;
+  }
+  @keyframes pulse{
+    0%{ opacity:0.55; r:7; }
+    100%{ opacity:0; r:16; }
+  }
+
+  .map-caption{
+    position:absolute;
+    top:18px; left:20px;
+    font-size:11.5px;
+    color:var(--text-faint);
+  }
+  .map-caption b{ color:var(--text-dim); font-weight:500; }
+
+  .map-legend-box{
+    position:absolute;
+    bottom:18px; left:20px;
+    background:rgba(15,22,32,0.88);
+    border:1px solid var(--border-soft);
+    border-radius:9px;
+    padding:12px 14px;
+    backdrop-filter:blur(4px);
+  }
+  .map-legend-box h4{
+    font-size:10.5px; font-weight:600; color:var(--text-dim);
+    margin-bottom:8px;
+  }
+
+  /* ---------- Right panel ---------- */
+  .feed-panel{
+    width:340px;
+    flex-shrink:0;
+    background:var(--panel);
+    border-left:1px solid var(--border-soft);
+    display:flex;
+    flex-direction:column;
+    min-height:0;
+  }
+  .feed-header{
+    padding:16px 18px 12px;
+    display:flex; align-items:center; justify-content:space-between;
+    border-bottom:1px solid var(--border-soft);
+    flex-shrink:0;
+  }
+  .feed-header h3{ font-size:13.5px; font-weight:600; }
+  .live-badge{
+    display:flex; align-items:center; gap:6px;
+    font-size:11px; color:var(--text-dim);
+  }
+  .live-dot{
+    width:6px; height:6px; border-radius:50%;
+    background:var(--cyan);
+    animation:blink 1.6s ease-in-out infinite;
+  }
+  @keyframes blink{ 0%,100%{opacity:1;} 50%{opacity:0.25;} }
+
+  .feed-list{
+    flex:1; overflow-y:auto;
+    padding:10px 14px 16px;
+  }
+  .feed-card{
+    background:var(--panel-alt);
+    border:1px solid var(--border-soft);
+    border-radius:9px;
+    padding:12px 13px;
+    margin-bottom:9px;
+    cursor:pointer;
+    transition:border-color .12s ease, transform .12s ease;
+    animation:fadein .35s ease;
+  }
+  @keyframes fadein{ from{opacity:0; transform:translateY(-6px);} to{opacity:1; transform:translateY(0);} }
+  .feed-card:hover{ border-color:var(--text-faint); }
+  .feed-card.active{ border-color:var(--cyan); background:#132420; }
+
+  .feed-top{ display:flex; align-items:center; justify-content:space-between; margin-bottom:7px; }
+  .source-tag{ display:flex; align-items:center; gap:6px; font-size:10.5px; color:var(--text-faint); }
+  .time-tag{ font-size:10.5px; color:var(--text-faint); }
+  .feed-text{ font-size:12.5px; color:var(--text); line-height:1.45; margin-bottom:9px; }
+  .feed-bottom{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+
+  .tag{
+    font-size:10px;
+    font-weight:500;
+    padding:3px 8px;
+    border-radius:10px;
+    display:inline-flex; align-items:center; gap:5px;
+  }
+  .tag .dot{ width:5px; height:5px; border-radius:50%; }
+  .tag.ev{ background:rgba(255,255,255,0.05); color:var(--text-dim); }
+  .tag.status{ font-weight:600; }
+  .tag.status.verified{ background:rgba(63,217,199,0.13); color:var(--cyan); }
+  .tag.status.likely{ background:rgba(91,147,255,0.13); color:var(--blue); }
+  .tag.status.unverified{ background:rgba(140,160,181,0.13); color:var(--text-dim); }
+  .tag.status.flagged{ background:rgba(232,86,74,0.14); color:var(--red); }
+
+  /* ---------- Detail view ---------- */
+  .detail-view{ display:none; flex:1; overflow-y:auto; padding:18px; }
+  .detail-view.show{ display:block; }
+  .feed-list.hide{ display:none; }
+
+  .back-link{
+    display:flex; align-items:center; gap:6px;
+    font-size:12px; color:var(--text-dim);
+    cursor:pointer; margin-bottom:16px;
+    width:fit-content;
+  }
+  .back-link:hover{ color:var(--text); }
+
+  .detail-media{
+    height:150px; border-radius:10px;
+    background:linear-gradient(135deg, #182231, #101822);
+    border:1px solid var(--border-soft);
+    display:flex; align-items:center; justify-content:center;
+    margin-bottom:16px;
+    color:var(--text-faint);
+    font-size:11px;
+    flex-direction:column;
+    gap:8px;
+  }
+
+  .detail-tags{ display:flex; gap:7px; margin-bottom:14px; flex-wrap:wrap; }
+  .detail-text{
+    font-size:13.5px; line-height:1.6; color:var(--text);
+    margin-bottom:18px;
+    padding-bottom:18px;
+    border-bottom:1px solid var(--border-soft);
+  }
+
+  .detail-block{ margin-bottom:16px; }
+  .detail-block h5{
+    font-size:11px; font-weight:600; color:var(--text-faint);
+    margin-bottom:7px;
+  }
+  .detail-block p{ font-size:12.5px; color:var(--text-dim); line-height:1.55; }
+  .detail-block .value{ color:var(--text); font-weight:500; }
+
+  .verify-box{
+    background:var(--panel-alt);
+    border:1px solid var(--border-soft);
+    border-radius:9px;
+    padding:13px 14px;
+  }
+  .verify-box.verified{ border-color:rgba(63,217,199,0.35); }
+  .verify-box.flagged{ border-color:rgba(232,86,74,0.35); }
+  .verify-status-line{
+    display:flex; align-items:center; gap:8px;
+    font-size:12.5px; font-weight:600; margin-bottom:6px;
+  }
+
+  .conf-meter{
+    height:5px; border-radius:3px; background:var(--border);
+    overflow:hidden; margin-top:8px;
+  }
+  .conf-meter .fill{ height:100%; border-radius:3px; }
+
+  /* ---------- WhatsApp modal ---------- */
+  .modal-overlay{
+    display:none;
+    position:fixed; inset:0;
+    background:rgba(4,7,11,0.72);
+    z-index:50;
+    align-items:center; justify-content:center;
+  }
+  .modal-overlay.show{ display:flex; }
+  .modal-box{
+    width:340px;
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:16px;
+    overflow:hidden;
+  }
+  .modal-head{
+    background:#173028;
+    padding:14px 16px;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .modal-head h4{ font-size:13px; font-weight:600; }
+  .modal-head p{ font-size:10.5px; color:var(--text-dim); margin-top:2px; }
+  .modal-close{ cursor:pointer; color:var(--text-dim); font-size:18px; line-height:1; }
+  .modal-close:hover{ color:var(--text); }
+
+  .chat-area{
+    padding:16px;
+    display:flex; flex-direction:column; gap:10px;
+    background:#0D1218;
+    min-height:280px;
+  }
+  .bubble{
+    max-width:80%;
+    padding:9px 12px;
+    border-radius:12px;
+    font-size:12px;
+    line-height:1.45;
+  }
+  .bubble.bot{
+    background:var(--panel-raised);
+    align-self:flex-start;
+    border-bottom-left-radius:3px;
+    color:var(--text-dim);
+  }
+  .bubble.user{
+    background:#1E5C4F;
+    align-self:flex-end;
+    border-bottom-right-radius:3px;
+    color:#DFF5EE;
+  }
+  .bubble.media{
+    background:var(--panel-raised);
+    align-self:flex-end;
+    border-bottom-right-radius:3px;
+    padding:8px;
+  }
+  .bubble.media .thumb{
+    width:100%; height:80px; border-radius:8px;
+    background:linear-gradient(135deg,#233042,#141D2A);
+    margin-bottom:6px;
+  }
+
+  ::-webkit-scrollbar{ width:8px; }
+  ::-webkit-scrollbar-track{ background:transparent; }
+  ::-webkit-scrollbar-thumb{ background:#22303F; border-radius:4px; }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <header>
+    <div class="brand">
+      <div class="brand-mark"></div>
+      <div class="brand-text">
+        <h1>Varuna</h1>
+        <p>National weather intelligence platform</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="clock mono">IST <span id="clockTime">--:--:--</span></div>
+      <button class="btn" id="openWhatsapp">Preview citizen reporting via WhatsApp</button>
+    </div>
+  </header>
+
+  <div class="notice">
+    <span class="dot"></span>
+    Demo build — every report shown below is illustrative sample data, not a live feed.
+  </div>
+
+  <div class="main">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+
+      <div class="side-section">
+        <h3>Reported in</h3>
+        <div class="chip-row" id="dateChips">
+          <div class="chip date-chip active" data-range="24">Today</div>
+          <div class="chip date-chip" data-range="72">Last 3 days</div>
+          <div class="chip date-chip" data-range="168">Last 7 days</div>
+        </div>
+      </div>
+
+      <div class="side-section">
+        <h3>Location</h3>
+        <div class="search-box">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="#8CA0B5" stroke-width="2"/><path d="M21 21l-4.3-4.3" stroke="#8CA0B5" stroke-width="2" stroke-linecap="round"/></svg>
+          <input type="text" id="locSearch" placeholder="Search city or state">
+        </div>
+      </div>
+
+      <div class="side-section">
+        <h3>Event type</h3>
+        <div class="chip-row" id="eventChips">
+          <div class="chip active" data-ev="flood"><span class="swatch" style="background:var(--ev-flood)"></span>Flood</div>
+          <div class="chip active" data-ev="rain"><span class="swatch" style="background:var(--ev-rain)"></span>Heavy rain</div>
+          <div class="chip active" data-ev="storm"><span class="swatch" style="background:var(--ev-storm)"></span>Thunderstorm</div>
+          <div class="chip active" data-ev="heat"><span class="swatch" style="background:var(--ev-heat)"></span>Heatwave</div>
+          <div class="chip active" data-ev="fog"><span class="swatch" style="background:var(--ev-fog)"></span>Fog</div>
+          <div class="chip active" data-ev="dust"><span class="swatch" style="background:var(--ev-dust)"></span>Dust storm</div>
+          <div class="chip active" data-ev="wind"><span class="swatch" style="background:var(--ev-wind)"></span>Strong wind</div>
+        </div>
+      </div>
+
+      <div class="side-section">
+        <h3>Verification status</h3>
+        <div class="chip-row" id="statusChips">
+          <div class="chip active" data-st="verified"><span class="swatch" style="background:var(--cyan)"></span>Verified</div>
+          <div class="chip active" data-st="likely"><span class="swatch" style="background:var(--blue)"></span>Likely genuine</div>
+          <div class="chip active" data-st="unverified"><span class="swatch" style="background:var(--grey)"></span>Unverified</div>
+          <div class="chip active" data-st="flagged"><span class="swatch" style="background:var(--red)"></span>Flagged</div>
+        </div>
+      </div>
+
+      <div class="side-section">
+        <h3>Today at a glance</h3>
+        <div class="stat-grid">
+          <div class="stat-card"><div class="num mono" id="statTotal">--</div><div class="lbl">Reports received</div></div>
+          <div class="stat-card"><div class="num mono cyan" id="statVerified">--</div><div class="lbl">Verified rate</div></div>
+          <div class="stat-card wide"><div class="num mono red" id="statAlerts">--</div><div class="lbl">Active clustered alerts</div></div>
+        </div>
+      </div>
+
+    </aside>
+
+    <!-- MAP -->
+    <div class="map-wrap">
+      <div class="map-grid"></div>
+      <div class="map-caption"><b>India</b> — live report distribution (sample)</div>
+      <svg class="india" id="mapSvg" viewBox="0 0 560 620"></svg>
+
+      <div class="map-legend-box">
+        <h4>Verification ring</h4>
+        <div class="legend">
+          <div class="legend-row"><span class="ring-demo" style="border:2px solid var(--cyan); background:none;"></span>Verified against IMD data</div>
+          <div class="legend-row"><span class="ring-demo" style="border:2px solid var(--blue); background:none;"></span>Likely genuine (corroborated)</div>
+          <div class="legend-row"><span class="ring-demo" style="border:2px dashed var(--grey); background:none;"></span>Unverified</div>
+          <div class="legend-row"><span class="ring-demo" style="border:2px solid var(--red); background:none;"></span>Flagged</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FEED / DETAIL -->
+    <aside class="feed-panel">
+      <div class="feed-header">
+        <h3>Live reports</h3>
+        <div class="live-badge"><span class="live-dot"></span>Live</div>
+      </div>
+
+      <div class="feed-list" id="feedList"></div>
+
+      <div class="detail-view" id="detailView">
+        <div class="back-link" id="backToFeed">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="#8CA0B5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Back to live feed
+        </div>
+        <div id="detailContent"></div>
+      </div>
+    </aside>
+
+  </div>
+</div>
+
+<!-- WhatsApp preview modal -->
+<div class="modal-overlay" id="waModal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <div>
+        <h4>Citizen reporting bot</h4>
+        <p>Preview — WhatsApp channel</p>
+      </div>
+      <div class="modal-close" id="closeWa">&times;</div>
+    </div>
+    <div class="chat-area">
+      <div class="bubble bot">Namaste! Send a photo or video of the weather near you, along with your location, and I'll add it to the Varuna network.</div>
+      <div class="bubble media">
+        <div class="thumb"></div>
+        Waterlogging video, Sector 12
+      </div>
+      <div class="bubble user">📍 Location shared — Kothrud, Pune</div>
+      <div class="bubble bot">Got it. Detected: heavy rain, waterlogging. Checking this against IMD radar for your area now.</div>
+      <div class="bubble bot">✅ Confirmed — matches rainfall recorded in your area at 14:20. Thank you, this has been added to the live map.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ---------------- Projection ---------------- */
+const LON_MIN=68, LON_MAX=97.5, LAT_MIN=7.5, LAT_MAX=36;
+const VBW=560, VBH=620, PAD=24;
+function project(lat, lon){
+  const x = PAD + ( (lon-LON_MIN)/(LON_MAX-LON_MIN) ) * (VBW-PAD*2);
+  const y = PAD + ( (LAT_MAX-lat)/(LAT_MAX-LAT_MIN) ) * (VBH-PAD*2);
+  return [x,y];
+}
+
+const boundary = [
+  [23.8,68.5],[24.3,70.3],[26.5,70.0],[28.9,71.0],[32.5,74.5],[34.3,74.0],
+  [35.0,77.5],[32.5,79.0],[30.3,81.0],[27.5,88.0],[27.0,91.0],[28.5,97.0],
+  [27.0,96.0],[25.5,94.5],[24.0,93.5],[22.0,92.7],[21.5,89.0],[20.0,86.8],
+  [17.7,82.3],[15.5,80.2],[13.1,80.3],[10.8,79.8],[9.3,78.9],[8.1,77.5],
+  [9.5,76.3],[11.8,75.4],[13.0,74.7],[15.3,73.8],[17.0,73.2],[19.1,72.8],
+  [20.7,70.9],[22.3,69.1],[23.8,68.5]
+];
+
+const svg = document.getElementById('mapSvg');
+const nsPath = document.createElementNS('http://www.w3.org/2000/svg','path');
+let d = boundary.map((p,i)=>{
+  const [x,y]=project(p[0],p[1]);
+  return (i===0?'M':'L') + x.toFixed(1) + ',' + y.toFixed(1);
+}).join(' ') + ' Z';
+nsPath.setAttribute('d', d);
+nsPath.setAttribute('class','india-outline');
+svg.appendChild(nsPath);
+
+/* ---------------- Dummy data ---------------- */
+const EV_COLORS = { flood:'#5B93FF', rain:'#3FD9C7', storm:'#A98CFF', heat:'#F0885A', fog:'#9AABBE', dust:'#D2A85E', wind:'#6FC9DE' };
+const EV_LABELS = { flood:'Flood', rain:'Heavy rain', storm:'Thunderstorm', heat:'Heatwave', fog:'Fog', dust:'Dust storm', wind:'Strong wind' };
+const ST_COLORS = { verified:'#3FD9C7', likely:'#5B93FF', unverified:'#8CA0B5', flagged:'#E8564A' };
+const ST_LABELS = { verified:'Verified', likely:'Likely genuine', unverified:'Unverified', flagged:'Flagged' };
+const SOURCE_ICON = { twitter:'𝕏', whatsapp:'\u{1F4AC}', telegram:'\u2708', citizen:'\u{1F464}' };
+
+const cities = {
+  mumbai:[19.07,72.87], pune:[18.52,73.85], delhi:[28.61,77.20], bengaluru:[12.97,77.59],
+  chennai:[13.08,80.27], kolkata:[22.57,88.36], hyderabad:[17.38,78.48], ahmedabad:[23.02,72.57],
+  jaipur:[26.91,75.78], guwahati:[26.14,91.73], lucknow:[26.85,80.94], patna:[25.59,85.13],
+  bhopal:[23.25,77.41], kochi:[9.93,76.26], chandigarh:[30.73,76.78], surat:[21.17,72.83],
+  nagpur:[21.15,79.09], bhubaneswar:[20.30,85.82]
+};
+
+const reports = [
+  {id:1, city:'pune', place:'FC Road, Pune', ev:'flood', st:'verified', src:'twitter', hrs:0.3,
+   text:'Heavy waterlogging near FC Road, traffic completely stalled since afternoon.',
+   locSrc:'GPS metadata', conf:92,
+   verify:'Cross-checked against IMD radar for Shivajinagar station — 38mm rainfall recorded between 13:00–14:00, consistent with this report.'},
+  {id:2, city:'kolkata', place:'Salt Lake, Kolkata', ev:'rain', st:'likely', src:'whatsapp', hrs:0.6,
+   text:'(Video, Hindi — transcribed) "Bahut zyada baarish ho rahi hai, sadak par paani bhar gaya hai."',
+   locSrc:'Extracted from speech (video audio)', conf:74,
+   verify:'No radar coverage available for this exact micro-location, but 4 nearby reports in the same 20-minute window corroborate heavy rainfall.'},
+  {id:3, city:'jaipur', place:'Jaipur city', ev:'dust', st:'verified', src:'telegram', hrs:1.1,
+   text:'Dust storm rolling in from the west, visibility dropping fast on the ring road.',
+   locSrc:'GPS metadata', conf:95,
+   verify:'Matches IMD dust-storm advisory issued for Jaipur district at 12:40 today.'},
+  {id:4, city:'chennai', place:'Marina Beach Road, Chennai', ev:'flood', st:'flagged', src:'twitter', hrs:1.4,
+   text:'Post claims "flooding today" — image matches a photo indexed from December 2023 flood coverage.',
+   locSrc:'NER on caption text', conf:31,
+   verify:'Image hash matches an archived 2023 flood photo. No rainfall recorded in this area in the last 48 hours. Marked as flagged.'},
+  {id:5, city:'lucknow', place:'NH44, near Lucknow', ev:'fog', st:'verified', src:'citizen', hrs:2.0,
+   text:'Dense fog reducing visibility to under 50m on the highway this morning.',
+   locSrc:'GPS metadata', conf:90,
+   verify:'Consistent with IMD fog advisory for the region, issued 05:30 today.'},
+  {id:6, city:'nagpur', place:'Nagpur', ev:'heat', st:'verified', src:'twitter', hrs:2.6,
+   text:'Temperatures crossing 45°C reported by multiple residents this afternoon.',
+   locSrc:'Profile location', conf:81,
+   verify:'Matches AWS station reading of 45.6°C recorded at 14:00 for Nagpur.'},
+  {id:7, city:'bhopal', place:'Bhopal Cantonment', ev:'storm', st:'unverified', src:'telegram', hrs:3.1,
+   text:'Thunderstorm with hail reported near the cantonment area, some crop damage claimed.',
+   locSrc:'NER on caption text', conf:48,
+   verify:'No radar coverage for this exact ward. No corroborating reports yet — held as unverified pending more data.'},
+  {id:8, city:'mumbai', place:'Marine Drive, Mumbai', ev:'wind', st:'verified', src:'twitter', hrs:3.6,
+   text:'Strong winds uprooted several trees along the promenade this evening.',
+   locSrc:'GPS metadata', conf:88,
+   verify:'Matches AWS wind-speed reading of 62 km/h recorded at Colaba station.'},
+  {id:9, city:'guwahati', place:'Near Guwahati', ev:'flood', st:'likely', src:'whatsapp', hrs:4.2,
+   text:'(Video, Assamese-Hindi mix — transcribed) River levels rising fast near the ghat, residents moving belongings.',
+   locSrc:'Extracted from speech (video audio)', conf:69,
+   verify:'No radar station nearby, but river-gauge data trend supports rising water level; corroborated by 2 other reports.'},
+  {id:10, city:'patna', place:'Patna', ev:'flood', st:'flagged', src:'telegram', hrs:5.0,
+   text:'Waterlogging clip being reshared — identified as duplicate of a report already logged last week.',
+   locSrc:'Event clustering', conf:22,
+   verify:'Perceptual image hash matches an entry already verified and stored 6 days ago. Marked as duplicate.'},
+  {id:11, city:'kochi', place:'Kochi backwaters', ev:'rain', st:'unverified', src:'citizen', hrs:5.8,
+   text:'Light drizzle turning heavier through the afternoon near the backwaters.',
+   locSrc:'NER on caption text', conf:44,
+   verify:'Below reporting threshold for radar corroboration — kept as unverified, monitoring for more reports.'},
+  {id:12, city:'chandigarh', place:'Chandigarh Airport', ev:'fog', st:'verified', src:'twitter', hrs:6.4,
+   text:'Dense fog delaying flight departures at the airport since early morning.',
+   locSrc:'GPS metadata', conf:93,
+   verify:'Matches IMD visibility reading of under 200m recorded at the airport station.'},
+  {id:13, city:'bhubaneswar', place:'Bhubaneswar coastline', ev:'rain', st:'verified', src:'telegram', hrs:7.0,
+   text:'Heavy rain lashing the coastline, linked to the cyclonic circulation offshore.',
+   locSrc:'GPS metadata', conf:91,
+   verify:'Consistent with IMD cyclone-alert bulletin issued for the coastal belt this morning.'},
+  {id:14, city:'surat', place:'Surat outskirts', ev:'storm', st:'unverified', src:'twitter', hrs:8.5,
+   text:'Claim of hailstorm damage to crops near the outskirts, no visual evidence attached.',
+   locSrc:'NER on caption text', conf:36,
+   verify:'No radar or AWS data available to confirm hail at this location. Held as unverified.'},
+  {id:15, city:'delhi', place:'Delhi NCR', ev:'dust', st:'verified', src:'citizen', hrs:9.2,
+   text:'Sudden dust storm swept through before evening showers began.',
+   locSrc:'GPS metadata', conf:87,
+   verify:'Matches IMD advisory and AWS visibility drop recorded for NCR at 18:10.'},
+  {id:16, city:'ahmedabad', place:'Ahmedabad', ev:'heat', st:'verified', src:'twitter', hrs:11.0,
+   text:'Heatwave conditions persist across the city; IMD orange alert in effect.',
+   locSrc:'Profile location', conf:85,
+   verify:'Matches IMD orange heat-alert bulletin issued for the district.'},
+  {id:17, city:'hyderabad', place:'Hyderabad', ev:'wind', st:'unverified', src:'citizen', hrs:26,
+   text:'Gusty winds reported near HITEC City in the early hours.',
+   locSrc:'GPS metadata', conf:52,
+   verify:'Report is outside the current radar refresh window for cross-verification. Awaiting confirmation.'},
+  {id:18, city:'bengaluru', place:'Bengaluru', ev:'rain', st:'verified', src:'telegram', hrs:30,
+   text:'Moderate rain through the evening, minor waterlogging on Outer Ring Road.',
+   locSrc:'GPS metadata', conf:80,
+   verify:'Matches IMD station data for HAL Airport, 22mm recorded over 3 hours.'},
+  {id:19, city:'jaipur', place:'Jaipur outskirts', ev:'heat', st:'flagged', src:'twitter', hrs:70,
+   text:'Old screenshot of a temperature reading being recirculated as current.',
+   locSrc:'NER on caption text', conf:18,
+   verify:'Screenshot metadata traced to a post from three months ago. Marked as flagged.'},
+  {id:20, city:'nagpur', place:'Nagpur', ev:'storm', st:'likely', src:'whatsapp', hrs:95,
+   text:'(Text, Marathi-Hindi mix) Thunderstorm damaged a few roadside stalls near the market.',
+   locSrc:'NER on caption text', conf:66,
+   verify:'Corroborated by two independent citizen reports in the same time window.'}
+];
+
+// deterministic small jitter per city so repeated cities don't overlap exactly
+const jitterMap = {};
+function jitterFor(city, id){
+  if(!jitterMap[city]) jitterMap[city]=0;
+  jitterMap[city]+=1;
+  const n = jitterMap[city];
+  const ang = (id*47)%360 * Math.PI/180;
+  const r = 0.35 * n;
+  return [Math.cos(ang)*r, Math.sin(ang)*r];
+}
+reports.forEach(r=>{
+  const base = cities[r.city];
+  const [jx,jy] = jitterFor(r.city, r.id);
+  r.lat = base[0]+jy*0.5;
+  r.lon = base[1]+jx*0.5;
+});
+
+/* ---------------- State ---------------- */
+let activeEv = new Set(Object.keys(EV_COLORS));
+let activeSt = new Set(Object.keys(ST_COLORS));
+let activeRange = 24;
+let searchTerm = '';
+let selectedId = null;
+
+function timeAgo(hrs){
+  if(hrs < 1) return Math.round(hrs*60)+'m ago';
+  if(hrs < 24) return Math.round(hrs)+'h ago';
+  return Math.round(hrs/24)+'d ago';
+}
+
+function filtered(){
+  return reports.filter(r =>
+    activeEv.has(r.ev) &&
+    activeSt.has(r.st) &&
+    r.hrs <= activeRange &&
+    (searchTerm==='' || r.city.includes(searchTerm) || r.place.toLowerCase().includes(searchTerm))
+  );
+}
+
+/* ---------------- Render map pins ---------------- */
+function renderPins(){
+  document.querySelectorAll('.pin').forEach(p=>p.remove());
+  const list = filtered();
+  list.forEach(r=>{
+    const [x,y] = project(r.lat, r.lon);
+    const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+    g.setAttribute('class','pin'+(r.st==='flagged'?' pulse':'')+(r.id===selectedId?' selected':''));
+    g.setAttribute('data-id', r.id);
+
+    if(r.st==='flagged'){
+      const pr = document.createElementNS('http://www.w3.org/2000/svg','circle');
+      pr.setAttribute('class','pulse-ring');
+      pr.setAttribute('cx',x); pr.setAttribute('cy',y); pr.setAttribute('r',7);
+      pr.setAttribute('fill','none'); pr.setAttribute('stroke', ST_COLORS.flagged); pr.setAttribute('stroke-width','1.5');
+      g.appendChild(pr);
+    }
+
+    const ring = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    ring.setAttribute('class','ring');
+    ring.setAttribute('cx',x); ring.setAttribute('cy',y); ring.setAttribute('r',7.5);
+    ring.setAttribute('fill','none');
+    ring.setAttribute('stroke', ST_COLORS[r.st]);
+    ring.setAttribute('stroke-width', r.id===selectedId ? 2.5 : 1.6);
+    if(r.st==='unverified') ring.setAttribute('stroke-dasharray','2,2');
+    g.appendChild(ring);
+
+    const core = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    core.setAttribute('class','core');
+    core.setAttribute('cx',x); core.setAttribute('cy',y); core.setAttribute('r',4);
+    core.setAttribute('fill', EV_COLORS[r.ev]);
+    g.appendChild(core);
+
+    g.addEventListener('click', ()=>openDetail(r.id));
+    svg.appendChild(g);
+  });
+}
+
+/* ---------------- Render feed ---------------- */
+function renderFeed(){
+  const listEl = document.getElementById('feedList');
+  listEl.innerHTML = '';
+  const list = filtered().slice().sort((a,b)=>a.hrs-b.hrs);
+  if(list.length===0){
+    listEl.innerHTML = '<div style="color:var(--text-faint); font-size:12px; padding:20px 4px;">No reports match the current filters.</div>';
+    return;
+  }
+  list.forEach(r=>{
+    const card = document.createElement('div');
+    card.className = 'feed-card' + (r.id===selectedId?' active':'');
+    card.innerHTML = `
+      <div class="feed-top">
+        <div class="source-tag">${SOURCE_ICON[r.src]} ${r.src[0].toUpperCase()+r.src.slice(1)} · ${r.place}</div>
+        <div class="time-tag mono">${timeAgo(r.hrs)}</div>
+      </div>
+      <div class="feed-text">${r.text}</div>
+      <div class="feed-bottom">
+        <span class="tag ev"><span class="dot" style="background:${EV_COLORS[r.ev]}"></span>${EV_LABELS[r.ev]}</span>
+        <span class="tag status ${r.st}"><span class="dot" style="background:${ST_COLORS[r.st]}"></span>${ST_LABELS[r.st]}</span>
+      </div>
+    `;
+    card.addEventListener('click', ()=>openDetail(r.id));
+    listEl.appendChild(card);
+  });
+}
+
+/* ---------------- Detail view ---------------- */
+function openDetail(id){
+  selectedId = id;
+  const r = reports.find(x=>x.id===id);
+  document.getElementById('feedList').classList.add('hide');
+  document.getElementById('detailView').classList.add('show');
+
+  const dc = document.getElementById('detailContent');
+  dc.innerHTML = `
+    <div class="detail-media">
+      <div>${r.ev==='flood'||r.ev==='rain' ? '\u{1F4A7}' : r.ev==='heat' ? '\u2600' : r.ev==='fog' ? '\u{1F32B}' : r.ev==='dust' ? '\u{1F32A}' : r.ev==='wind' ? '\u{1F32C}' : '\u26C8'}</div>
+      <div>Media preview placeholder</div>
+    </div>
+    <div class="detail-tags">
+      <span class="tag ev"><span class="dot" style="background:${EV_COLORS[r.ev]}"></span>${EV_LABELS[r.ev]}</span>
+      <span class="tag status ${r.st}"><span class="dot" style="background:${ST_COLORS[r.st]}"></span>${ST_LABELS[r.st]}</span>
+    </div>
+    <div class="detail-text">${r.text}</div>
+
+    <div class="detail-block">
+      <h5>Location</h5>
+      <p><span class="value">${r.place}</span> — determined via ${r.locSrc}</p>
+    </div>
+
+    <div class="detail-block">
+      <h5>Source &amp; timestamp</h5>
+      <p><span class="value">${r.src[0].toUpperCase()+r.src.slice(1)}</span> · ${timeAgo(r.hrs)}</p>
+    </div>
+
+    <div class="detail-block">
+      <h5>Verification</h5>
+      <div class="verify-box ${r.st==='verified'?'verified':(r.st==='flagged'?'flagged':'')}">
+        <div class="verify-status-line" style="color:${ST_COLORS[r.st]}">
+          <span class="dot" style="width:7px;height:7px;border-radius:50%;background:${ST_COLORS[r.st]};display:inline-block;"></span>
+          ${ST_LABELS[r.st]}
+        </div>
+        <p style="color:var(--text-dim); font-size:12px; line-height:1.55;">${r.verify}</p>
+        <div class="conf-meter"><div class="fill" style="width:${r.conf}%; background:${ST_COLORS[r.st]};"></div></div>
+        <p style="margin-top:6px; font-size:10.5px; color:var(--text-faint);">Confidence score: ${r.conf}%</p>
+      </div>
+    </div>
+  `;
+  renderPins();
+  renderFeed();
+}
+
+document.getElementById('backToFeed').addEventListener('click', ()=>{
+  selectedId = null;
+  document.getElementById('feedList').classList.remove('hide');
+  document.getElementById('detailView').classList.remove('show');
+  renderPins();
+  renderFeed();
+});
+
+/* ---------------- Filters wiring ---------------- */
+document.getElementById('eventChips').addEventListener('click', e=>{
+  const chip = e.target.closest('.chip'); if(!chip) return;
+  const ev = chip.dataset.ev;
+  chip.classList.toggle('active');
+  if(activeEv.has(ev)) activeEv.delete(ev); else activeEv.add(ev);
+  renderPins(); renderFeed(); updateStats();
+});
+document.getElementById('statusChips').addEventListener('click', e=>{
+  const chip = e.target.closest('.chip'); if(!chip) return;
+  const st = chip.dataset.st;
+  chip.classList.toggle('active');
+  if(activeSt.has(st)) activeSt.delete(st); else activeSt.add(st);
+  renderPins(); renderFeed(); updateStats();
+});
+document.getElementById('dateChips').addEventListener('click', e=>{
+  const chip = e.target.closest('.chip'); if(!chip) return;
+  document.querySelectorAll('.date-chip').forEach(c=>c.classList.remove('active'));
+  chip.classList.add('active');
+  activeRange = parseInt(chip.dataset.range);
+  renderPins(); renderFeed(); updateStats();
+});
+document.getElementById('locSearch').addEventListener('input', e=>{
+  searchTerm = e.target.value.trim().toLowerCase();
+  renderPins(); renderFeed(); updateStats();
+});
+
+/* ---------------- Stats ---------------- */
+function updateStats(){
+  const list = filtered();
+  const total = list.length;
+  const verifiedCount = list.filter(r=>r.st==='verified').length;
+  const rate = total ? Math.round((verifiedCount/total)*100) : 0;
+  const alerts = list.filter(r=>r.st==='flagged').length;
+  document.getElementById('statTotal').textContent = (1200 + total*7).toLocaleString();
+  document.getElementById('statVerified').textContent = rate + '%';
+  document.getElementById('statAlerts').textContent = alerts;
+}
+
+/* ---------------- Clock ---------------- */
+function tickClock(){
+  const now = new Date();
+  const h = String(now.getHours()).padStart(2,'0');
+  const m = String(now.getMinutes()).padStart(2,'0');
+  const s = String(now.getSeconds()).padStart(2,'0');
+  document.getElementById('clockTime').textContent = `${h}:${m}:${s}`;
+}
+setInterval(tickClock, 1000); tickClock();
+
+/* ---------------- Simulated live arrivals ---------------- */
+const extraPool = [
+  {city:'mumbai', place:'Andheri, Mumbai', ev:'rain', st:'unverified', src:'citizen',
+   text:'Sudden downpour near the station, roads starting to flood.', locSrc:'GPS metadata', conf:40,
+   verify:'Just received — awaiting radar cross-check for this window.'},
+  {city:'kolkata', place:'Howrah, Kolkata', ev:'wind', st:'verified', src:'twitter',
+   text:'Strong gusts reported near the bridge, hoardings damaged.', locSrc:'GPS metadata', conf:83,
+   verify:'Matches AWS wind reading recorded minutes ago.'},
+  {city:'chennai', place:'T Nagar, Chennai', ev:'storm', st:'likely', src:'whatsapp',
+   text:'(Video, Tamil — transcribed) Thunder and lightning intensifying near the market.', locSrc:'Extracted from speech (video audio)', conf:71,
+   verify:'Corroborated by one other nearby report in the last 10 minutes.'}
+];
+let nextId = 100;
+setInterval(()=>{
+  const pick = extraPool[Math.floor(Math.random()*extraPool.length)];
+  const base = cities[pick.city];
+  const jitter = (Math.random()-0.5)*0.6;
+  const newReport = Object.assign({}, pick, {
+    id: nextId++, hrs: 0.01, lat: base[0]+jitter, lon: base[1]+jitter
+  });
+  reports.unshift(newReport);
+  if(reports.length > 40) reports.pop();
+  renderPins(); renderFeed(); updateStats();
+}, 8000);
+
+/* ---------------- WhatsApp modal ---------------- */
+document.getElementById('openWhatsapp').addEventListener('click', ()=>{
+  document.getElementById('waModal').classList.add('show');
+});
+document.getElementById('closeWa').addEventListener('click', ()=>{
+  document.getElementById('waModal').classList.remove('show');
+});
+document.getElementById('waModal').addEventListener('click', e=>{
+  if(e.target.id==='waModal') document.getElementById('waModal').classList.remove('show');
+});
+
+/* ---------------- Init ---------------- */
+renderPins();
+renderFeed();
+updateStats();
+</script>
+
+</body>
+</html>
