@@ -1,0 +1,1513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Weatherly — National Weather Intelligence Platform</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F8FAFC;
+    --panel: #FFFFFF;
+    --panel-alt: #F1F5F9;
+    --panel-raised: #FFFFFF;
+    --border: #E2E8F0;
+    --border-soft: #F1F5F9;
+    --text: #1E293B;
+    --text-dim: #64748B;
+    --text-faint: #94A3B8;
+
+    --cyan: #06B6D4;
+    --blue: #3B82F6;
+    --amber: #F59E0B;
+    --red: #EF4444;
+    --green: #10B981;
+    --indigo: #6366F1;
+
+    --ev-flood: #3B82F6;
+    --ev-rain: #06B6D4;
+    --ev-storm: #8B5CF6;
+    --ev-heat: #F97316;
+    --ev-fog: #94A3B8;
+    --ev-dust: #D97706;
+    --ev-wind: #0EA5E9;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+  .mono { font-family: 'IBM Plex Mono', monospace; }
+
+  /* ---------- App shell ---------- */
+  .app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    min-width: 1200px;
+  }
+
+  /* ---------- Header ---------- */
+  header {
+    height: 72px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 32px;
+    border-bottom: 1px solid var(--border);
+    background: var(--panel);
+    z-index: 100;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .brand { display: flex; align-items: center; gap: 16px; }
+  .brand-mark {
+    width: 40px; height: 40px; border-radius: 12px;
+    background: linear-gradient(135deg, var(--cyan), var(--blue));
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 12px rgba(6, 182, 212, 0.3);
+  }
+  .brand-mark svg { width: 22px; height: 22px; fill: #fff; }
+  .brand-text h1 { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; line-height: 1; color: var(--text); }
+  .brand-text p { font-size: 13px; color: var(--text-dim); margin-top: 3px; font-weight: 500; }
+
+  .header-right { display: flex; align-items: center; gap: 24px; }
+  .clock { font-size: 14px; color: var(--text-dim); }
+  .clock span { color: var(--text); font-weight: 600; }
+
+  .role-toggle {
+    display: flex;
+    background: var(--panel-alt);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 4px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .role-option {
+    padding: 6px 16px;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 20px;
+    transition: all 0.2s ease;
+    color: var(--text-dim);
+  }
+  .role-option.active {
+    background: var(--panel);
+    color: var(--blue);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  }
+
+  .btn {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    background: var(--panel-alt);
+    border: 1px solid var(--border);
+    padding: 10px 20px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .btn:hover { border-color: var(--blue); background: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+  .btn-primary { background: var(--blue); color: #fff; border: none; }
+  .btn-primary:hover { background: #2563eb; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); }
+
+  .notice {
+    flex-shrink: 0;
+    background: #EFF6FF;
+    border-bottom: 1px solid #DBEAFE;
+    padding: 8px 24px;
+    font-size: 12px;
+    color: var(--blue);
+    display: flex; align-items: center; justify-content: center;
+    gap: 8px;
+  }
+  .notice .dot { width:6px; height:6px; border-radius:50%; background:var(--blue); animation: blink 1.5s infinite; }
+  @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+  /* ---------- View Containers ---------- */
+  .view-container { display: none; height: calc(100vh - 72px - 38px); }
+  .view-container.show { display: flex; }
+
+  /* ---------- PUBLIC INTERFACE ---------- */
+  .public-layout {
+    display: grid;
+    grid-template-columns: 360px 1fr 360px;
+    gap: 24px;
+    padding: 24px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .public-col {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    overflow-y: auto;
+  }
+
+  .weather-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 24px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.04);
+    transition: transform 0.2s ease;
+  }
+  .weather-card:hover { transform: translateY(-4px); }
+  .weather-card h3 { font-size: 15px; color: var(--text-dim); margin-bottom: 18px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+
+  .weather-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+  .weather-stat {
+    background: var(--panel-alt);
+    padding: 16px;
+    border-radius: 14px;
+    border: 1px solid var(--border-soft);
+    text-align: center;
+    transition: background 0.2s ease;
+  }
+  .weather-stat:hover { background: #EBEFF5; }
+  .weather-stat .val { font-size: 22px; font-weight: 700; color: var(--text); display: block; }
+  .weather-stat .lbl { font-size: 11px; color: var(--text-dim); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+  .weather-stat .unit { font-size: 12px; color: var(--text-faint); margin-left: 2px; }
+
+  .report-status-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 24px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.04);
+  }
+  .status-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    margin-top: 12px;
+  }
+  .status-table th { text-align: left; color: var(--text-faint); padding: 10px; border-bottom: 1px solid var(--border); font-weight: 600; }
+  .status-table td { padding: 12px 10px; border-bottom: 1px solid var(--border-soft); }
+
+  .public-map-wrap {
+    position: relative;
+    background: var(--panel);
+    border-radius: 24px;
+    border: 1px solid var(--border);
+    overflow: hidden;
+    height: 100%;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .public-map-wrap img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    pointer-events: none;
+  }
+  .public-map-overlay {
+    position: absolute;
+    top: 24px; left: 24px;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 16px;
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    backdrop-filter: blur(12px);
+    z-index: 10;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+  }
+
+  /* ---------- AUTHORITY INTERFACE ---------- */
+  .auth-layout {
+    display: flex;
+    height: 100%;
+    width: 100%;
+  }
+  .sidebar {
+    width: 300px;
+    flex-shrink: 0;
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 24px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+  }
+  .side-section h3 {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 14px;
+  }
+  .chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    font-size: 12px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--panel-alt);
+    color: var(--text-dim);
+    cursor: pointer;
+    display: flex; align-items: center; gap: 8px;
+    transition: all 0.2s ease;
+    user-select: none;
+  }
+  .chip:hover { border-color: var(--blue); color: var(--text); }
+  .chip.active {
+    background: rgba(59, 130, 246, 0.1);
+    border-color: var(--blue);
+    color: var(--blue);
+    font-weight: 600;
+  }
+  .chip .swatch { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+  .search-box {
+    display: flex; align-items: center;
+    background: var(--panel-alt);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    gap: 10px;
+  }
+  .search-box input {
+    background: none; border: none; outline: none;
+    color: var(--text); font-size: 13px; width: 100%;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+  }
+  .search-box input::placeholder { color: var(--text-faint); }
+
+  .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .stat-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+  }
+  .stat-card:hover { border-color: var(--blue); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+  .stat-card.wide { grid-column: 1 / -1; }
+  .stat-card .num { font-size: 26px; font-weight: 700; color: var(--text); }
+  .stat-card .num.cyan { color: var(--cyan); }
+  .stat-card .num.red { color: var(--red); }
+  .stat-card .lbl { font-size: 11px; color: var(--text-dim); margin-top: 4px; font-weight: 500; }
+
+  .map-wrap {
+    flex: 1;
+    position: relative;
+    background: #F1F5F9;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: grab;
+  }
+  .map-wrap:active { cursor: grabbing; }
+  .map-container {
+    position: relative;
+    transition: transform 0.1s ease-out;
+    transform-origin: center;
+  }
+  .map-wrap img {
+    max-width: none;
+    max-height: none;
+    object-fit: contain;
+    pointer-events: none;
+    user-select: none;
+    -webkit-user-drag: none;
+  }
+  .map-grid {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(0,0,0,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+  }
+  .map-controls {
+    position: absolute;
+    bottom: 24px; right: 24px;
+    display: flex; flex-direction: column; gap: 8px;
+    z-index: 20;
+  }
+  .map-ctrl-btn {
+    width: 36px; height: 36px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    font-size: 18px; font-weight: 600;
+    transition: all 0.2s ease;
+  }
+  .map-ctrl-btn:hover { background: #fff; border-color: var(--blue); color: var(--blue); }
+  .map-caption {
+    position: absolute;
+    top: 24px; left: 24px;
+    font-size: 13px;
+    color: var(--text-dim);
+    background: rgba(255, 255, 255, 0.9);
+    padding: 8px 16px;
+    border-radius: 12px;
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    z-index: 10;
+  }
+  .map-caption b { color: var(--blue); font-weight: 600; }
+
+  .map-legend-box {
+    position: absolute;
+    bottom: 24px; left: 24px;
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    z-index: 10;
+  }
+  .map-legend-box h4 {
+    font-size: 11px; font-weight: 700; color: var(--text-faint);
+    text-transform: uppercase; margin-bottom: 12px;
+  }
+  .legend { display: flex; flex-direction: column; gap: 8px; }
+  .legend-row { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--text-dim); }
+  .legend-row .swatch { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+  .feed-panel {
+    width: 380px;
+    flex-shrink: 0;
+    background: var(--panel);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .feed-header {
+    padding: 20px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .feed-header h3 { font-size: 15px; font-weight: 600; color: var(--text); }
+  .live-badge {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 11px; font-weight: 600; color: var(--blue);
+    background: rgba(59, 130, 246, 0.1);
+    padding: 3px 8px;
+    border-radius: 10px;
+  }
+  .live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--blue); animation: blink 1.5s infinite; }
+
+  .feed-list { flex: 1; overflow-y: auto; padding: 16px; }
+  .feed-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    animation: slideIn 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+  }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+  .feed-card:hover { border-color: var(--blue); background: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+  .feed-card.active { border-color: var(--blue); background: #f8faff; box-shadow: 0 0 15px rgba(59, 130, 246, 0.1); }
+
+  .feed-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .source-tag { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-dim); font-weight: 500; }
+  .time-tag { font-size: 11px; color: var(--text-faint); }
+  .feed-text { font-size: 13px; color: var(--text); line-height: 1.5; margin-bottom: 12px; }
+  .feed-bottom { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+  .tag {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 4px;
+    display: inline-flex; align-items: center; gap: 5px;
+    text-transform: uppercase;
+  }
+  .tag .dot { width: 5px; height: 5px; border-radius: 50%; }
+  .tag.ev { background: var(--panel-alt); color: var(--text-dim); }
+  .tag.status { border: 1px solid currentColor; }
+  .tag.status.verified { color: var(--green); background: rgba(16, 185, 129, 0.1); }
+  .tag.status.likely { color: var(--blue); background: rgba(59, 130, 246, 0.1); }
+  .tag.status.unverified { color: var(--text-dim); background: rgba(148, 163, 184, 0.1); }
+  .tag.status.flagged { color: var(--red); background: rgba(239, 68, 68, 0.1); }
+
+  /* ---------- Detail view ---------- */
+  .detail-view { display: none; flex: 1; overflow-y: auto; padding: 24px; }
+  .detail-view.show { display: block; }
+  .feed-list.hide { display: none; }
+
+  .back-link {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; color: var(--text-dim);
+    cursor: pointer; margin-bottom: 24px;
+    width: fit-content;
+    transition: color 0.2s ease;
+  }
+  .back-link:hover { color: var(--text); }
+
+  .detail-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
+  .detail-header h2 { font-size: 22px; font-weight: 700; margin-bottom: 4px; color: var(--text); }
+
+  .detail-media {
+    height: 200px; border-radius: 16px;
+    background: linear-gradient(135deg, #F1F5F9, #FFFFFF);
+    border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 20px;
+    color: var(--text-dim);
+    font-size: 12px;
+    flex-direction: column;
+    gap: 10px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.02);
+  }
+  .detail-media::after {
+    content: "INTELLIGENCE ATTACHMENT";
+    position: absolute; top: 12px; left: 12px;
+    font-size: 9px; font-weight: 700; color: var(--text-faint);
+    letter-spacing: 1px;
+  }
+
+  .detail-tags { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .detail-text {
+    font-size: 16px; line-height: 1.6; color: var(--text);
+    margin-bottom: 24px;
+    padding: 20px;
+    background: var(--panel-alt);
+    border-radius: 12px;
+    border-left: 4px solid var(--blue);
+  }
+
+  .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+  .detail-block {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    padding: 16px;
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+  }
+  .detail-block h5 {
+    font-size: 11px; font-weight: 700; color: var(--text-faint);
+    text-transform: uppercase; margin-bottom: 8px;
+  }
+  .detail-block p { font-size: 14px; color: var(--text-dim); line-height: 1.4; }
+  .detail-block .value { color: var(--text); font-weight: 600; }
+
+  .verify-timeline {
+    margin-top: 32px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+  }
+  .timeline-title {
+    font-size: 13px; font-weight: 700; color: var(--text-faint);
+    text-transform: uppercase; margin-bottom: 20px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .timeline-step {
+    display: flex; gap: 20px; margin-bottom: 20px;
+    position: relative;
+  }
+  .timeline-step::before {
+    content: "";
+    position: absolute; left: 8px; top: 24px; bottom: -20px;
+    width: 2px; background: var(--border-soft);
+  }
+  .timeline-step:last-child::before { display: none; }
+  .step-dot {
+    width: 18px; height: 18px; border-radius: 50%;
+    background: var(--panel-alt);
+    border: 2px solid var(--border);
+    z-index: 2;
+    flex-shrink: 0;
+    transition: all 0.3s ease;
+  }
+  .step-dot.complete { background: var(--green); border-color: var(--green); box-shadow: 0 0 8px rgba(16, 185, 129, 0.4); }
+  .step-dot.fail { background: var(--red); border-color: var(--red); box-shadow: 0 0 8px rgba(239, 68, 68, 0.4); }
+  .step-content { padding-top: 2px; }
+  .step-content h6 { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+  .step-content p { font-size: 12px; color: var(--text-dim); line-height: 1.4; }
+
+  .conf-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    margin-top: 24px;
+    display: flex; align-items: center; justify-content: space-between;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+  }
+  .conf-info { display: flex; align-items: center; gap: 16px; }
+  .conf-ring {
+    width: 48px; height: 48px; border-radius: 50%;
+    border: 3px solid var(--border-soft);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 700; color: var(--text);
+    position: relative;
+  }
+  .conf-ring svg {
+    position: absolute; inset: -3px;
+    transform: rotate(-90deg);
+    pointer-events: none;
+  }
+  .conf-ring circle {
+    fill: none; stroke-width: 3;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.8s ease;
+  }
+
+  /* ---------- Modals ---------- */
+  .modal-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(15, 23, 42, 0.6);
+    z-index: 1000;
+    align-items: center; justify-content: center;
+    backdrop-filter: blur(8px);
+  }
+  .modal-overlay.show { display: flex; }
+  .modal-box {
+    width: 520px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    overflow: hidden;
+    box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
+    animation: modalSlide 0.3s ease-out;
+  }
+  @keyframes modalSlide { from { opacity: 0; transform: scale(0.95) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+  .modal-head {
+    background: #F8FAFC;
+    padding: 20px 24px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+  }
+  .modal-head h4 { font-size: 16px; font-weight: 700; color: var(--text); }
+  .modal-head p { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+  .modal-close { cursor: pointer; color: var(--text-dim); font-size: 24px; line-height: 1; transition: color 0.2s; }
+  .modal-close:hover { color: var(--red); }
+
+  .modal-body { padding: 24px; }
+
+  /* IMPROVED FORM STYLING */
+  .report-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .form-group label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .form-group select, .form-group input, .form-group textarea {
+    padding: 12px 16px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--panel-alt);
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 14px;
+    color: var(--text);
+    transition: all 0.2s ease;
+  }
+  .form-group select:focus, .form-group input:focus, .form-group textarea:focus {
+    outline: none;
+    border-color: var(--blue);
+    background: #fff;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header>
+    <div class="brand">
+      <div class="brand-mark">
+        <svg viewBox="0 0 24 24"><path d="M12 2L4.5 20.29L5.21 21L12 18L18.79 21L19.5 20.29L12 2Z"/></svg>
+      </div>
+      <div class="brand-text">
+        <h1 id="viewTitle">Weatherly</h1>
+        <p id="viewSub">Citizen Weather Portal</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="role-toggle" id="roleToggle">
+        <div class="role-option active" data-role="public">Public Portal</div>
+        <div class="role-option" data-role="authority">Authority Panel</div>
+      </div>
+      <div class="clock mono">IST <span id="clockTime">--:--:--</span></div>
+    </div>
+  </header>
+
+  <div class="notice">
+    <span class="dot"></span>
+    <span id="noticeText">Welcome! Report weather events in your area to help the national network.</span>
+  </div>
+
+  <!-- PUBLIC VIEW -->
+  <div id="publicView" class="view-container show">
+    <div class="public-layout">
+      <div class="public-col">
+        <div class="weather-card">
+          <h3><span style="color:var(--blue)">●</span> Localized Intelligence</h3>
+          <div class="weather-grid">
+            <div class="weather-stat"><span class="val">32<span class="unit">°C</span></span><span class="lbl">Temp</span></div>
+            <div class="weather-stat"><span class="val">12 <span class="unit">km/h</span></span><span class="lbl">Wind</span></div>
+            <div class="weather-stat"><span class="val" style="color:var(--green)">42</span><span class="lbl">AQI</span></div>
+            <div class="weather-stat"><span class="val">1013 <span class="unit">hPa</span></span><span class="lbl">Pressure</span></div>
+            <div class="weather-stat"><span class="val">12 <span class="unit">km</span></span><span class="lbl">Vis</span></div>
+            <div class="weather-stat"><span class="val" style="color:var(--amber)">3 <span class="unit">UV</span></span><span class="lbl">UV Index</span></div>
+          </div>
+          <div style="margin-top:20px; text-align:center;">
+            <button class="btn btn-primary" style="width:100%" id="btnOpenReport">Report Incident</button>
+          </div>
+        </div>
+
+        <div class="report-status-card">
+          <h3 style="font-size:14px; margin-bottom:15px; color:var(--text); font-weight:700;">My Report Tracking</h3>
+          <table class="status-table">
+            <thead>
+              <tr><th style="width:30%">ID</th><th style="width:40%">Event</th><th style="width:30%">Status</th></tr>
+            </thead>
+            <tbody id="myReportsTable">
+              <tr><td>#1241</td><td>Flood</td><td style="color:var(--green); font-weight:600;">Verified</td></tr>
+              <tr><td>#1288</td><td>Rain</td><td style="color:var(--text-dim); font-weight:600;">Pending</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="weather-card" style="flex:1">
+          <h3 style="color:var(--red)"><span style="color:var(--red)">●</span> Critical Alerts</h3>
+          <div id="localAlerts" style="display:flex; flex-direction:column; gap:12px;">
+            <div style="font-size:12px; padding:12px; background:rgba(239, 68, 68, 0.08); border-left:4px solid var(--red); border-radius:8px; color:var(--text);">
+              <b style="color:var(--red)">Flash Flood Warning:</b> Heavy rainfall expected in your district over next 4 hours. Take precautions.
+            </div>
+            <div style="font-size:12px; padding:12px; background:rgba(245, 158, 11, 0.08); border-left:4px solid var(--amber); border-radius:8px; color:var(--text);">
+              <b style="color:var(--amber)">Heatwave Alert:</b> Temperatures expected to cross 42°C tomorrow. Stay hydrated.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="public-map-wrap">
+        <div class="public-map-overlay">
+          <b style="color:var(--blue); font-size:14px;">Hyperlocal Insights</b><br>
+          <span style="font-size:12px; color:var(--text-dim);">Showing verified events within 50km of you</span>
+        </div>
+        <div id="publicMapContainer" style="position:relative; display:flex; align-items:center; justify-content:center;">
+          <img id="publicMapImg" src="india-map.jpg" style="max-width:100%; max-height:100%; object-fit:contain; opacity:0.8;">
+          <svg id="publicMapPins" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none;"></svg>
+        </div>
+      </div>
+
+      <div class="public-col">
+        <div class="weather-card" style="flex:1; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; border: 2px dashed var(--border);">
+          <div style="font-size:40px; margin-bottom:15px;">📍</div>
+          <h3 style="color:var(--text); margin-bottom:10px;">Location Intelligence</h3>
+          <p style="font-size:12px; color:var(--text-dim); margin-bottom:20px;">Your current location is being used to fetch nearby weather reports and IMD alerts.</p>
+          <div style="font-size:11px; color:var(--blue); font-weight:600; background:rgba(59,130,246,0.1); padding:6px 12px; border-radius:20px;">Verified Local Area: Pune, Maharashtra</div>
+        </div>
+        <div class="weather-card">
+          <h3 style="color:var(--green)"><span style="color:var(--green)">●</span> Community Impact</h3>
+          <p style="font-size:12px; color:var(--text-dim); line-height:1.5;">Your reports help IMD fill coverage gaps. Together, we build a denser national observation network.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AUTHORITY VIEW -->
+  <div id="authorityView" class="view-container">
+    <div class="auth-layout">
+      <aside class="sidebar">
+        <div class="side-section">
+          <h3>Intelligence Window</h3>
+          <div class="chip-row" id="dateChips">
+            <div class="chip active" data-range="24">Today</div>
+            <div class="chip" data-range="72">3 Days</div>
+            <div class="chip" data-range="168">7 Days</div>
+          </div>
+        </div>
+        <div class="side-section">
+          <h3>Region Filter</h3>
+          <div class="search-box">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+            <input type="text" id="locSearch" placeholder="Search city, state or district...">
+          </div>
+        </div>
+        <div class="side-section">
+          <h3>Event Category</h3>
+          <div class="chip-row" id="eventChips">
+            <div class="chip active" data-ev="flood"><span class="swatch" style="background:var(--ev-flood)"></span>Flood</div>
+            <div class="chip active" data-ev="rain"><span class="swatch" style="background:var(--ev-rain)"></span>Rain</div>
+            <div class="chip active" data-ev="storm"><span class="swatch" style="background:var(--ev-storm)"></span>Storm</div>
+            <div class="chip active" data-ev="heat"><span class="swatch" style="background:var(--ev-heat)"></span>Heat</div>
+            <div class="chip active" data-ev="fog"><span class="swatch" style="background:var(--ev-fog)"></span>Fog</div>
+            <div class="chip active" data-ev="dust"><span class="swatch" style="background:var(--ev-dust)"></span>Dust</div>
+            <div class="chip active" data-ev="wind"><span class="swatch" style="background:var(--ev-wind)"></span>Wind</div>
+          </div>
+        </div>
+        <div class="side-section">
+          <h3>Trust Threshold</h3>
+          <div class="chip-row" id="statusChips">
+            <div class="chip active" data-st="verified"><span class="swatch" style="background:var(--green)"></span>Verified</div>
+            <div class="chip active" data-st="likely"><span class="swatch" style="background:var(--blue)"></span>Likely</div>
+            <div class="chip active" data-st="unverified"><span class="swatch" style="background:var(--text-dim)"></span>Unverified</div>
+            <div class="chip active" data-st="flagged"><span class="swatch" style="background:var(--red)"></span>Flagged</div>
+          </div>
+        </div>
+        <div class="side-section">
+          <h3>Platform Metrics</h3>
+          <div class="stat-grid">
+            <div class="stat-card"><div class="num mono" id="statTotal">--</div><div class="lbl">Total Reports</div></div>
+            <div class="stat-card"><div class="num mono cyan" id="statVerified">--</div><div class="lbl">Verification Rate</div></div>
+            <div class="stat-card wide"><div class="num mono red" id="statAlerts">--</div><div class="lbl">High-Priority Clusters</div></div>
+          </div>
+        </div>
+      </aside>
+
+      <div class="map-wrap">
+        <div class="map-grid"></div>
+        <div class="map-caption"><b>National Intelligence Map</b> — Live reporting distribution</div>
+        <div id="authMapContainer" class="map-container" style="position:relative; display:flex; align-items:center; justify-content:center;">
+          <img id="authMapImg" src="india-map.jpg" style="opacity:0.8;">
+          <svg id="authMapPins" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none;"></svg>
+        </div>
+        <div class="map-controls">
+          <button class="map-ctrl-btn" id="zoomIn" title="Zoom In">+</button>
+          <button class="map-ctrl-btn" id="zoomOut" title="Zoom Out">−</button>
+          <button class="map-ctrl-btn" id="resetMap" title="Reset View">⟲</button>
+        </div>
+        <div class="map-legend-box">
+          <h4>Verification Status</h4>
+          <div class="legend">
+            <div class="legend-row"><span class="swatch" style="border:2px solid var(--green); background:none;"></span> Verified (IMD Match)</div>
+            <div class="legend-row"><span class="swatch" style="border:2px solid var(--blue); background:none;"></span> Likely (Corroborated)</div>
+            <div class="legend-row"><span class="swatch" style="border:2px dashed var(--text-dim); background:none;"></span> Unverified (Low Evidence)</div>
+            <div class="legend-row"><span class="swatch" style="border:2px solid var(--red); background:none;"></span> Flagged (Anomalous)</div>
+          </div>
+        </div>
+      </div>
+
+      <aside class="feed-panel">
+        <div class="feed-header">
+          <h3>Intelligence Feed</h3>
+          <div class="live-badge"><span class="live-dot"></span>Live</div>
+        </div>
+        <div class="feed-list" id="feedList"></div>
+        <div class="detail-view" id="detailView">
+          <div class="back-link" id="backToFeed">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+            Back to Intelligence Feed
+          </div>
+          <div id="detailContent"></div>
+        </div>
+      </aside>
+    </div>
+  </div>
+</div>
+
+<!-- Reporting Modal -->
+<div class="modal-overlay" id="reportModal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <div>
+        <h4 id="modalTitle">Incident Report</h4>
+        <p id="modalSub">Help us map the weather in real-time</p>
+      </div>
+      <div class="modal-close" id="closeReport">&times;</div>
+    </div>
+    <div class="modal-body">
+      <div id="formContainer">
+        <div class="report-form">
+          <div class="form-group">
+            <label>Event Type</label>
+            <select id="repEv">
+              <option value="flood">Flood / Waterlogging</option>
+              <option value="rain">Heavy Rainfall</option>
+              <option value="storm">Thunderstorm</option>
+              <option value="heat">Heatwave</option>
+              <option value="fog">Dense Fog</option>
+              <option value="dust">Dust Storm</option>
+              <option value="wind">Strong Winds</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>What's happening?</label>
+            <textarea id="repText" rows="3" placeholder="Describe the event, damage or visibility..."></textarea>
+          </div>
+          <div class="form-group">
+            <label>Location</label>
+            <input type="text" id="repLoc" placeholder="Area, City, State">
+          </div>
+          <div class="form-group">
+            <label>Attach Media</label>
+            <input type="file" id="repFile" style="font-size:12px; color:var(--text-dim);">
+          </div>
+          <button class="btn btn-primary" style="width:100%" id="submitReport">Submit Intelligence Report</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ---------------- Projection & Geometry ---------------- */
+const LON_MIN=68, LON_MAX=97.5, LAT_MIN=7.5, LAT_MAX=36;
+const VBW=560, VBH=620, PAD=24;
+function project(lat, lon){
+  const x = PAD + ( (lon-LON_MIN)/(LON_MAX-LON_MIN) ) * (VBW-PAD*2);
+  const y = PAD + ( (LAT_MAX-lat)/(LAT_MAX-LAT_MIN) ) * (VBH-PAD*2);
+  return [x,y];
+}
+
+/* ---------------- Data ---------------- */
+const EV_COLORS = { flood:'#3B82F6', rain:'#06B6D4', storm:'#8B5CF6', heat:'#F97316', fog:'#94A3B8', dust:'#D97706', wind:'#0EA5E9' };
+const EV_LABELS = { flood:'Flood', rain:'Heavy Rain', storm:'Thunderstorm', heat:'Heatwave', fog:'Fog', dust:'Dust Storm', wind:'Strong Wind' };
+const ST_COLORS = { verified:'#10B981', likely:'#3B82F6', unverified:'#94A3B8', flagged:'#EF4444' };
+const ST_LABELS = { verified:'Verified', likely:'Likely Genuine', unverified:'Unverified', flagged:'Flagged' };
+const SOURCE_ICON = { twitter:'𝕏', whatsapp:'\u{1F4AC}', telegram:'✈', citizen:'\u{1F464}' };
+
+const cities = {
+  mumbai:[19.07,72.87], pune:[18.52,73.85], delhi:[28.61,77.20], bengaluru:[12.97,77.59],
+  chennai:[13.08,80.27], kolkata:[22.57,88.36], hyderabad:[17.38,78.48], ahmedabad:[23.02,72.57],
+  jaipur:[26.91,75.78], guwahati:[26.14,91.73], lucknow:[26.85,80.94], patna:[25.59,85.13],
+  bhopal:[23.25,77.41], kochi:[9.93,76.26], chandigarh:[30.73,76.78], surat:[21.17,72.83],
+  nagpur:[21.15,79.09], bhubaneswar:[20.30,85.82]
+};
+
+const reports = [
+  {id:1, city:'pune', place:'FC Road, Pune', ev:'flood', st:'verified', src:'twitter', hrs:0.3,
+   text:'Heavy waterlogging near FC Road, traffic completely stalled since afternoon.',
+   locSrc:'GPS metadata', conf:92,
+   steps: [
+     {name:'Classification', status:'complete', msg:'Flood detected via NLP (Confidence 98%)'},
+     {name:'NER', status:'complete', msg:'Location: Pune, Shivajinagar (Verified)'},
+     {name:'Deduplication', status:'complete', msg:'Unique report; no recent duplicates found'},
+     {name:'Cross-Check', status:'complete', msg:'IMD Radar match: 38mm rain recorded at local station'}
+   ],
+   verify:'Cross-checked against IMD radar for Shivajinagar station — 38mm rainfall recorded between 13:00–14:00, consistent with this report.'},
+  {id:2, city:'kolkata', place:'Salt Lake, Kolkata', ev:'rain', st:'likely', src:'whatsapp', hrs:0.6,
+   text:'(Video, Hindi — transcribed) "Bahut zyada baarish ho rahi hai, sadak par paani bhar gaya hai."',
+   locSrc:'Extracted from speech (video audio)', conf:74,
+   steps: [
+     {name:'Classification', status:'complete', msg:'Heavy rain detected (Confidence 91%)'},
+     {name:'NER', status:'complete', msg:'Location: Salt Lake Sector V'},
+     {name:'Deduplication', status:'complete', msg:'Unique report'},
+     {name:'Cross-Check', status:'fail', msg:'No radar coverage for exact micro-location'}
+   ],
+   verify:'No radar coverage available for this exact micro-location, but 4 nearby reports in the same 20-minute window corroborate heavy rainfall.'},
+  {id:3, city:'jaipur', place:'Jaipur city', ev:'dust', st:'verified', src:'telegram', hrs:1.1,
+   text:'Dust storm rolling in from the west, visibility dropping fast on the ring road.',
+   locSrc:'GPS metadata', conf:95,
+   steps: [
+     {name:'Classification', status:'complete', msg:'Dust Storm detected (Confidence 99%)'},
+     {name:'NER', status:'complete', msg:'Location: Jaipur Ring Road'},
+     {name:'Deduplication', status:'complete', msg:'Unique report'},
+     {name:'Cross-Check', status:'complete', msg:'Matches IMD dust-storm advisory issued for Jaipur district'}
+   ],
+   verify:'Matches IMD dust-storm advisory issued for Jaipur district at 12:40 today.'},
+  {id:4, city:'chennai', place:'Marina Beach Road, Chennai', ev:'flood', st:'flagged', src:'twitter', hrs:1.4,
+   text:'Post claims "flooding today" — image matches a photo indexed from December 2023 flood coverage.',
+   locSrc:'NER on caption text', conf:31,
+   steps: [
+     {name:'Classification', status:'complete', msg:'Flood detected (Confidence 80%)'},
+     {name:'NER', status:'complete', msg:'Location: Chennai Marina'},
+     {name:'Deduplication', status:'fail', msg:'Image hash matches archived 2023 photo'},
+     {name:'Cross-Check', status:'fail', msg:'No rainfall recorded in last 48 hours'}
+   ],
+   verify:'Image hash matches an archived 2023 flood photo. No rainfall recorded in this area in the last 48 hours. Marked as flagged.'},
+  {id:5, city:'lucknow', place:'NH44, near Lucknow', ev:'fog', st:'verified', src:'citizen', hrs:2.0,
+   text:'Dense fog reducing visibility to under 50m on the highway this morning.',
+   locSrc:'GPS metadata', conf:90,
+   steps: [
+     {name:'Classification', status:'complete', msg:'Fog detected (Confidence 95%)'},
+     {name:'NER', status:'complete', msg:'Location: Lucknow NH44'},
+     {name:'Deduplication', status:'complete', msg:'Unique report'},
+     {name:'Cross-Check', status:'complete', msg:'Consistent with IMD visibility readings'}
+   ],
+   verify:'Consistent with IMD fog advisory for the region, issued 05:30 today.'},
+  {id:6, city:'nagpur', place:'Nagpur', ev:'heat', st:'verified', src:'twitter', hrs:2.6,
+   text:'Temperatures crossing 45°C reported by multiple residents this afternoon.',
+   locSrc:'Profile location', conf:81,
+   steps: [
+     {name:'Classification', status:'complete', msg:'Heatwave detected (Confidence 92%)'},
+     {name:'NER', status:'complete', msg:'Location: Nagpur City'},
+     {name:'Deduplication', status:'complete', msg:'Unique report'},
+     {name:'Cross-Check', status:'complete', msg:'Matches AWS station reading of 45.6°C'}
+   ],
+   verify:'Matches AWS station reading of 45.6°C recorded at 14:00 for Nagpur.'},
+  {id:7, city:'bhopal', place:'Bhopal Cantonment', ev:'storm', st:'unverified', src:'telegram', hrs:3.1,
+   text:'Thunderstorm with hail reported near the cantonment area, some crop damage claimed.',
+   locSrc:'NER on caption text', conf:48,
+   steps: [
+     {name:'Classification', status:'complete', msg:'Thunderstorm detected (Confidence 88%)'},
+     {name:'NER', status:'complete', msg:'Location: Bhopal Cantonment'},
+     {name:'Deduplication', status:'complete', msg:'Unique report'},
+     {name:'Cross-Check', status:'fail', msg:'Insufficient data for cross-verification'}
+   ],
+   verify:'No radar coverage for this exact ward. No corroborating reports yet — held as unverified pending more data.'},
+  {id:8, city:'mumbai', place:'Marine Drive, Mumbai', ev:'wind', st:'verified', src:'twitter', hrs:3.6,
+   text:'Strong winds uprooted several trees along the promenade this evening.',
+   locSrc:'GPS metadata', conf:88,
+   steps: [
+     {name:'Classification', status:'complete', msg:'Strong Wind detected (Confidence 90%)'},
+     {name:'NER', status:'complete', msg:'Location: Marine Drive, Mumbai'},
+     {name:'Deduplication', status:'complete', msg:'Unique report'},
+     {name:'Cross-Check', status:'complete', msg:'Matches AWS wind-speed reading of 62 km/h'}
+   ],
+   verify:'Matches AWS wind-speed reading of 62 km/h recorded at Colaba station.'},
+  {id:9, city:'guwahati', place:'Near Guwahati', ev:'flood', st:'likely', src:'whatsapp', hrs:4.2,
+   text:'(Video, Assamese-Hindi mix — transcribed) River levels rising fast near the ghat, residents moving belongings.',
+   locSrc:'Extracted from speech (video audio)', conf:69,
+   steps: [
+     {name:'Classification', status:'complete', msg:'Flood detected (Confidence 85%)'},
+     {name:'NER', status:'complete', msg:'Location: Guwahati Riverfront'},
+     {name:'Deduplication', status:'complete', msg:'Unique report'},
+     {name:'Cross-Check', status:'complete', msg:'River-gauge data supports rising water levels'}
+   ],
+   verify:'No radar station nearby, but river-gauge data trend supports rising water level; corroborated by 2 other reports.'},
+  {id:10, city:'patna', place:'Patna', ev:'flood', st:'flagged', src:'telegram', hrs:5.0,
+   text:'Waterlogging clip being reshared — identified as duplicate of a report already logged last week.',
+   locSrc:'Event clustering', conf:22,
+   steps: [
+     {name:'Classification', status:'complete', msg:'Flood detected (Confidence 80%)'},
+     {name:'NER', status:'complete', msg:'Location: Patna City'},
+     {name:'Deduplication', status:'fail', msg:'Perceptual hash match: Duplicate of Report #842'},
+     {name:'Cross-Check', status:'fail', msg:'Data outdated; event not active today'}
+   ],
+   verify:'Perceptual image hash matches an entry already verified and stored 6 days ago. Marked as duplicate.'},
+  {id:11, city:'kochi', place:'Kochi backwaters', ev:'rain', st:'unverified', src:'citizen', hrs:5.8,
+   text:'Light drizzle turning heavier through the afternoon near the backwaters.',
+   locSrc:'NER on caption text', conf:44,
+   steps: [
+     {name:'Classification', status:'complete', msg:'Rain detected (Confidence 70%)'},
+     {name:'NER', status:'complete', msg:'Location: Kochi Backwaters'},
+     {name:'Deduplication', status:'complete', msg:'Unique report'},
+     {name:'Cross-Check', status:'fail', msg:'Below threshold for radar corroboration'}
+   ],
+   verify:'Below reporting threshold for radar corroboration — kept as unverified, monitoring for more reports.'},
+  {id:12, city:'chandigarh', place:'Chandigarh Airport', ev:'fog', st:'verified', src:'twitter', hrs:6.4,
+   text:'Dense fog delaying flight departures at the airport since early morning.',
+   locSrc:'GPS metadata', conf:93,
+   steps: [
+     {name:'Classification', status:'complete', msg:'Fog detected (Confidence 98%)'},
+     {name:'NER', status:'complete', msg:'Location: Chandigarh Airport'},
+     {name:'Deduplication', status:'complete', msg:'Unique report'},
+     {name:'Cross-Check', status:'complete', msg:'Matches IMD visibility reading (<200m)'}
+   ],
+   verify:'Matches IMD visibility reading of under 200m recorded at the airport station.'},
+  {id:13, city:'bhubaneswar', place:'Bhubaneswar coastline', ev:'rain', st:'verified', src:'telegram', hrs:7.0,
+   text:'Heavy rain lashing the coastline, linked to the cyclonic circulation offshore.',
+   locSrc:'GPS metadata', conf:91,
+   steps: [
+     {name:'Classification', status:'complete', msg:'Heavy Rain detected (Confidence 95%)'},
+     {name:'NER', status:'complete', msg:'Location: Bhubaneswar Coast'},
+     {name:'Deduplication', status:'complete', msg:'Unique report'},
+     {name:'Cross-Check', status:'complete', msg:'Consistent with IMD cyclone-alert bulletin'}
+   ],
+   verify:'Consistent with IMD cyclone-alert bulletin issued for the coastal belt this morning.'},
+  {id:14, city:'surat', place:'Surat outskirts', ev:'storm', st:'unverified', src:'twitter', hrs:8.5,
+   text:'Claim of hailstorm damage to crops near the outskirts, no visual evidence attached.',
+   locSrc:'NER on caption text', conf:36,
+   steps: [
+     {name:'Classification', status:'complete', msg:'Thunderstorm detected (Confidence 70%)'},
+     {name:'NER', status:'complete', msg:'Location: Surat Outskirts'},
+     {name:'Deduplication', status:'complete', msg:'Unique report'},
+     {name:'Cross-Check', status:'fail', msg:'No hail evidence in AWS/Radar data'}
+   ],
+   verify:'No radar or AWS data available to confirm hail at this location. Held as unverified.'},
+  {id:15, city:'delhi', place:'Delhi NCR', ev:'dust', st:'verified', src:'citizen', hrs:9.2,
+   text:'Sudden dust storm swept through before evening showers began.',
+   locSrc:'GPS metadata', conf:87,
+   steps: [
+     {name:'Classification', status:'complete', msg:'Dust Storm detected (Confidence 92%)'},
+     {name:'NER', status:'complete', msg:'Location: Delhi NCR'},
+     {name:'Deduplication', status:'complete', msg:'Unique report'},
+     {name:'Cross-Check', status:'complete', msg:'Matches IMD advisory and AWS visibility drop'}
+   ],
+   verify:'Matches IMD advisory and AWS visibility drop recorded for NCR at 18:10.'},
+  {id:16, city:'ahmedabad', place:'Ahmedabad', ev:'heat', st:'verified', src:'twitter', hrs:11.0,
+   text:'Heatwave conditions persist across the city; IMD orange alert in effect.',
+   locSrc:'Profile location', conf:85,
+   steps: [
+     {name:'Classification', status:'complete', msg:'Heatwave detected (Confidence 95%)'},
+     {name:'NER', status:'complete', msg:'Location: Ahmedabad City'},
+     {name:'Deduplication', status:'complete', msg:'Unique report'},
+     {name:'Cross-Check', status:'complete', msg:'Matches IMD orange heat-alert bulletin'}
+   ],
+   verify:'Matches IMD orange heat-alert bulletin issued for the district.'},
+  {id:17, city:'hyderabad', place:'Hyderabad', ev:'wind', st:'unverified', src:'citizen', hrs:26,
+   text:'Gusty winds reported near HITEC City in the early hours.',
+   locSrc:'GPS metadata', conf:52,
+   steps: [
+     {name:'Classification', status:'complete', msg:'Strong Wind detected (Confidence 80%)'},
+     {name:'NER', status:'complete', msg:'Location: HITEC City, Hyderabad'},
+     {name:'Deduplication', status:'complete', msg:'Unique report'},
+     {name:'Cross-Check', status:'fail', msg:'Outside current radar refresh window'}
+   ],
+   verify:'Report is outside the current radar refresh window for cross-verification. Awaiting confirmation.'},
+  {id:18, city:'bengaluru', place:'Bengaluru', ev:'rain', st:'verified', src:'telegram', hrs:30,
+   text:'Moderate rain through the evening, minor waterlogging on Outer Ring Road.',
+   locSrc:'GPS metadata', conf:80,
+   steps: [
+     {name:'Classification', status:'complete', msg:'Rain detected (Confidence 88%)'},
+     {name:'NER', status:'complete', msg:'Location: Bengaluru ORR'},
+     {name:'Deduplication', status:'complete', msg:'Unique report'},
+     {name:'Cross-Check', status:'complete', msg:'Matches IMD station data for HAL Airport'}
+   ],
+   verify:'Matches IMD station data for HAL Airport, 22mm recorded over 3 hours.'},
+  {id:19, city:'jaipur', place:'Jaipur outskirts', ev:'heat', st:'flagged', src:'twitter', hrs:70,
+   text:'Old screenshot of a temperature reading being recirculated as current.',
+   locSrc:'NER on caption text', conf:18,
+   steps: [
+     {name:'Classification', status:'complete', msg:'Heatwave detected (Confidence 80%)'},
+     {name:'NER', status:'complete', msg:'Location: Jaipur Outskirts'},
+     {name:'Deduplication', status:'fail', msg:'Metadata trace: Post dates from 3 months ago'},
+     {name:'Cross-Check', status:'fail', msg:'Temperature mismatch with current station data'}
+   ],
+   verify:'Screenshot metadata traced to a post from three months ago. Marked as flagged.'},
+  {id:20, city:'nagpur', place:'Nagpur', ev:'storm', st:'likely', src:'whatsapp', hrs:95,
+   text:'(Text, Marathi-Hindi mix) Thunderstorm damaged a few roadside stalls near the market.',
+   locSrc:'NER on caption text', conf:66,
+   steps: [
+     {name:'Classification', status:'complete', msg:'Thunderstorm detected (Confidence 88%)'},
+     {name:'NER', status:'complete', msg:'Location: Nagpur Market Area'},
+     {name:'Deduplication', status:'complete', msg:'Unique report'},
+     {name:'Cross-Check', status:'complete', msg:'Corroborated by 2 other citizen reports'}
+   ],
+   verify:'Corroborated by two independent citizen reports in the same time window.'}
+];
+
+// jitter per city so reports don\'t overlap
+const jitterMap = {};
+function jitterFor(city, id){
+  if(!jitterMap[city]) jitterMap[city]=0;
+  jitterMap[city]+=1;
+  const n = jitterMap[city];
+  const ang = (id*47)%360 * Math.PI/180;
+  const r = 0.4 * n;
+  return [Math.cos(ang)*r, Math.sin(ang)*r];
+}
+reports.forEach(r=>{
+  const base = cities[r.city];
+  const [jx,jy] = jitterFor(r.city, r.id);
+  r.lat = base[0]+jy*0.5;
+  r.lon = base[1]+jx*0.5;
+});
+
+/* ---------------- State ---------------- */
+let activeEv = new Set(Object.keys(EV_COLORS));
+let activeSt = new Set(Object.keys(ST_COLORS));
+let activeRange = 24;
+let searchTerm = '';
+let selectedId = null;
+let currentRole = 'public';
+
+function timeAgo(hrs){
+  if(hrs < 1) return Math.round(hrs*60)+'m ago';
+  if(hrs < 24) return Math.round(hrs)+'h ago';
+  return Math.round(hrs/24)+'d ago';
+}
+
+function filtered(){
+  return reports.filter(r =>
+    activeEv.has(r.ev) &&
+    activeSt.has(r.st) &&
+    r.hrs <= activeRange &&
+    (searchTerm==='' || r.city.includes(searchTerm) || r.place.toLowerCase().includes(searchTerm))
+  );
+}
+
+/* ---------------- Render map pins ---------------- */
+function renderPins(svgId, mode = 'national'){
+  const svg = document.getElementById(svgId);
+  if(!svg) return;
+
+  // Align SVG size to the image size for absolute positioning
+  const img = svg.previousElementSibling;
+  if(img && img.tagName === 'IMG') {
+    svg.setAttribute('width', img.clientWidth);
+    svg.setAttribute('height', img.clientHeight);
+  }
+
+  document.querySelectorAll(`#${svgId} .pin`).forEach(p=>p.remove());
+
+  const list = filtered();
+  const displayList = mode === 'nearby' ? list.filter(r => r.city === 'pune' || r.city === 'mumbai') : list;
+
+  displayList.forEach(r=>{
+    const [x,y] = project(r.lat, r.lon);
+
+    // Scale coordinates to the actual rendered size of the image
+    const scaleX = svg.clientWidth / VBW;
+    const scaleY = svg.clientHeight / VBH;
+
+    const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+    g.setAttribute('class','pin'+(r.st==='flagged'?' pulse':'')+(r.id===selectedId?' selected':''));
+    g.setAttribute('data-id', r.id);
+
+    if(r.st==='flagged'){
+      const pr = document.createElementNS('http://www.w3.org/2000/svg','circle');
+      pr.setAttribute('class','pulse-ring');
+      pr.setAttribute('cx', x * scaleX); pr.setAttribute('cy', y * scaleY); pr.setAttribute('r',7);
+      pr.setAttribute('fill','none'); pr.setAttribute('stroke', ST_COLORS.flagged); pr.setAttribute('stroke-width','1.5');
+      g.appendChild(pr);
+    }
+
+    const ring = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    ring.setAttribute('class','ring');
+    ring.setAttribute('cx', x * scaleX); ring.setAttribute('cy', y * scaleY); ring.setAttribute('r',7.5);
+    ring.setAttribute('fill','none');
+    ring.setAttribute('stroke', ST_COLORS[r.st]);
+    ring.setAttribute('stroke-width', r.id===selectedId ? 3 : 1.6);
+    if(r.st==='unverified') ring.setAttribute('stroke-dasharray','2,2');
+    g.appendChild(ring);
+
+    const core = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    core.setAttribute('class','core');
+    core.setAttribute('cx', x * scaleX); core.setAttribute('cy', y * scaleY); core.setAttribute('r',4);
+    core.setAttribute('fill', EV_COLORS[r.ev]);
+    g.appendChild(core);
+
+    g.addEventListener('click', ()=>openDetail(r.id));
+    svg.appendChild(g);
+  });
+}
+
+/* ---------------- Render feed ---------------- */
+function renderFeed(){
+  const listEl = document.getElementById('feedList');
+  if(!listEl) return;
+  listEl.innerHTML = '';
+  const list = filtered().slice().sort((a,b)=>a.hrs-b.hrs);
+  if(list.length===0){
+    listEl.innerHTML = '<div style="color:var(--text-faint); font-size:12px; padding:20px 4px; text-align:center;">No reports match filters.</div>';
+    return;
+  }
+  list.forEach(r=>{
+    const card = document.createElement('div');
+    card.className = 'feed-card' + (r.id===selectedId?' active':'');
+    card.innerHTML = `
+      <div class="feed-top">
+        <div class="source-tag">${SOURCE_ICON[r.src]} ${r.src[0].toUpperCase()+r.src.slice(1)} · ${r.place}</div>
+        <div class="time-tag mono">${timeAgo(r.hrs)}</div>
+      </div>
+      <div class="feed-text">${r.text}</div>
+      <div class="feed-bottom">
+        <span class="tag ev"><span class="dot" style="background:${EV_COLORS[r.ev]}"></span>${EV_LABELS[r.ev]}</span>
+        <span class="tag status ${r.st}"><span class="dot" style="background:${ST_COLORS[r.st]}"></span>${ST_LABELS[r.st]}</span>
+      </div>
+    `;
+    card.addEventListener('click', ()=>openDetail(r.id));
+    listEl.appendChild(card);
+  });
+}
+
+/* ---------------- Detail view ---------------- */
+function openDetail(id){
+  selectedId = id;
+  const r = reports.find(x=>x.id===id);
+  document.getElementById('feedList').classList.add('hide');
+  document.getElementById('detailView').classList.add('show');
+
+  const dc = document.getElementById('detailContent');
+  const isPublic = currentRole === 'public';
+  const displayPlace = isPublic ? `Near ${r.city}` : r.place;
+  const displayLocSrc = isPublic ? 'Masked for privacy' : r.locSrc;
+
+  dc.innerHTML = `
+    <div class="detail-header">
+      <div>
+        <h2>${r.place}</h2>
+        <p style="color:var(--text-dim); font-size:13px;">Report #${1000 + r.id} · ${timeAgo(r.hrs)}</p>
+      </div>
+      <span class="tag status ${r.st}" style="font-size:12px; padding:6px 12px;">${ST_LABELS[r.st]}</span>
+    </div>
+
+    <div class="detail-media">
+      <div style="font-size:30px;">${r.ev==='flood'||r.ev==='rain' ? '\u{1F4A7}' : r.ev==='heat' ? '☀' : r.ev==='fog' ? '\u{1F32B}' : r.ev==='dust' ? '\u{1F32A}' : r.ev==='wind' ? '\u{1F32C}' : '⛈'}</div>
+      <div>Sample Media Attachment</div>
+    </div>
+
+    <div class="detail-tags">
+      <span class="tag ev"><span class="dot" style="background:${EV_COLORS[r.ev]}"></span>${EV_LABELS[r.ev]}</span>
+      <span class="tag status ${r.st}"><span class="dot" style="background:${ST_COLORS[r.st]}"></span>${ST_LABELS[r.st]}</span>
+    </div>
+
+    <div class="detail-text">${r.text}</div>
+
+    <div class="detail-grid">
+      <div class="detail-block">
+        <h5>Resolved Location</h5>
+        <p><span class="value">${displayPlace}</span><br>${displayLocSrc}</p>
+      </div>
+      <div class="detail-block">
+        <h5>Intelligence Source</h5>
+        <p><span class="value">${r.src[0].toUpperCase()+r.src.slice(1)}</span><br>Verified timestamp</p>
+      </div>
+    </div>
+
+    <div class="verify-timeline">
+      <div class="timeline-title">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M9 12l2 2 4-4"/></svg>
+        Verification Pipeline Trace
+      </div>
+      ${r.steps.map(s => `
+        <div class="timeline-step">
+          <div class="step-dot ${s.status}">${s.status === 'fail' ? '!' : ''}</div>
+          <div class="step-content">
+            <h6>${s.name}</h6>
+            <p>${s.msg}</p>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+
+    <div class="conf-card">
+      <div class="conf-info">
+        <div class="conf-ring">
+          <svg width="46" height="46">
+            <circle cx="23" cy="23" r="20" stroke="var(--border-soft)" stroke-width="3" fill="none"/>
+            <circle cx="23" cy="23" r="20" stroke="${ST_COLORS[r.st]}" stroke-width="3" fill="none"
+                    stroke-dasharray="${2 * Math.PI * 20}"
+                    stroke-dashoffset="${(2 * Math.PI * 20) * (1 - r.conf/100)}" />
+          </svg>
+          ${r.conf}%
+        </div>
+        <div>
+          <div style="font-size:13px; font-weight:600; color:var(--text);">Trust Confidence Score</div>
+          <div style="font-size:11px; color:var(--text-dim);">${r.verify}</div>
+        </div>
+      </div>
+    </div>
+  `;
+  renderPins('authMapPins');
+  renderFeed();
+}
+
+document.getElementById('backToFeed').addEventListener('click', ()=>{
+  selectedId = null;
+  document.getElementById('feedList').classList.remove('hide');
+  document.getElementById('detailView').classList.remove('show');
+  renderPins('authMapPins');
+  renderFeed();
+});
+
+/* ---------------- Filters & Role ---------------- */
+document.getElementById('eventChips').addEventListener('click', e=>{
+  const chip = e.target.closest('.chip'); if(!chip) return;
+  const ev = chip.dataset.ev;
+  chip.classList.toggle('active');
+  if(activeEv.has(ev)) activeEv.delete(ev); else activeEv.add(ev);
+  renderPins('authMapPins'); renderFeed(); updateStats();
+});
+document.getElementById('statusChips').addEventListener('click', e=>{
+  const chip = e.target.closest('.chip'); if(!chip) return;
+  const st = chip.dataset.st;
+  chip.classList.toggle('active');
+  if(activeSt.has(st)) activeSt.delete(st); else activeSt.add(st);
+  renderPins('authMapPins'); renderFeed(); updateStats();
+});
+document.getElementById('dateChips').addEventListener('click', e=>{
+  const chip = e.target.closest('.chip'); if(!chip) return;
+  document.querySelectorAll('.date-chip').forEach(c=>c.classList.remove('active'));
+  chip.classList.add('active');
+  activeRange = parseInt(chip.dataset.range);
+  renderPins('authMapPins'); renderFeed(); updateStats();
+});
+document.getElementById('locSearch').addEventListener('input', e=>{
+  searchTerm = e.target.value.trim().toLowerCase();
+  renderPins('authMapPins'); renderFeed(); updateStats();
+});
+
+document.getElementById('roleToggle').addEventListener('click', e=>{
+  const option = e.target.closest('.role-option'); if(!option) return;
+  document.querySelectorAll('.role-option').forEach(o=>o.classList.remove('active'));
+  option.classList.add('active');
+  currentRole = option.dataset.role;
+
+  document.getElementById('publicView').classList.toggle('show', currentRole === 'public');
+  document.getElementById('authorityView').classList.toggle('show', currentRole === 'authority');
+
+  document.getElementById('viewTitle').textContent = currentRole === 'public' ? 'Weatherly' : 'Weatherly Intelligence';
+  document.getElementById('viewSub').textContent = currentRole === 'public' ? 'Citizen Weather Portal' : 'National Intelligence Platform';
+  document.getElementById('noticeText').textContent = currentRole === 'public'
+    ? 'Welcome! Report weather events in your area to help the national network.'
+    : 'LIVE DEMO: Processing national data from 4+ sources. All data is simulated.';
+
+  if(currentRole === 'public') {
+    renderPins('publicMapPins', 'nearby');
+  } else {
+    renderPins('authMapPins', 'national');
+    renderFeed();
+  }
+});
+
+/* ---------------- Stats ---------------- */
+function updateStats(){
+  const list = filtered();
+  const total = list.length;
+  const verifiedCount = list.filter(r=>r.st==='verified').length;
+  const rate = total ? Math.round((verifiedCount/total)*100) : 0;
+  const alerts = list.filter(r=>r.st==='flagged').length;
+  document.getElementById('statTotal').textContent = (1200 + total*7).toLocaleString();
+  document.getElementById('statVerified').textContent = rate + '%';
+  document.getElementById('statAlerts').textContent = alerts;
+}
+
+/* ---------------- Clock ---------------- */
+function tickClock(){
+  const now = new Date();
+  const h = String(now.getHours()).padStart(2,'0');
+  const m = String(now.getMinutes()).padStart(2,'0');
+  const s = String(now.getSeconds()).padStart(2,'0');
+  document.getElementById('clockTime').textContent = `${h}:${m}:${s}`;
+}
+setInterval(tickClock, 1000); tickClock();
+
+/* ---------------- Public-Specific Logic ---------------- */
+document.getElementById('btnOpenReport').addEventListener('click', ()=>{
+  document.getElementById('reportModal').classList.add('show');
+});
+document.getElementById('closeReport').addEventListener('click', ()=>{
+  document.getElementById('reportModal').classList.remove('show');
+});
+
+document.getElementById('submitReport').addEventListener('click', ()=>{
+  const ev = document.getElementById('repEv').value;
+  const text = document.getElementById('repText').value;
+  const loc = document.getElementById('repLoc').value;
+  if(!text || !loc) { alert('Please fill in all fields'); return; }
+
+  const table = document.getElementById('myReportsTable');
+  const id = Math.floor(Math.random()*1000) + 1000;
+  const row = table.insertRow(0);
+  row.innerHTML = `<td>#${id}</td><td>${EV_LABELS[ev]}</td><td style="color:var(--text-dim); font-weight:600;">Pending</td>`;
+
+  alert('Report submitted successfully! It is now being verified by the AI pipeline.');
+  document.getElementById('reportModal').classList.remove('show');
+  document.getElementById('repText').value = '';
+  document.getElementById('repLoc').value = '';
+});
+
+/* ---------------- Simulated live arrivals ---------------- */
+const extraPool = [
+  {city:'mumbai', place:'Andheri, Mumbai', ev:'rain', st:'unverified', src:'citizen',
+   text:'Sudden downpour near the station, roads starting to flood.', locSrc:'GPS metadata', conf:40,
+   steps: [{name:'Classification', status:'complete', msg:'Rain detected (70%)'}, {name:'NER', status:'complete', msg:'Mumbai Andheri'}, {name:'Deduplication', status:'complete', msg:'Unique'}, {name:'Cross-Check', status:'fail', msg:'Awaiting radar'}],
+   verify:'Just received — awaiting radar cross-check for this window.'},
+  {city:'kolkata', place:'Howrah, Kolkata', ev:'wind', st:'verified', src:'twitter',
+   text:'Strong gusts reported near the bridge, hoardings damaged.', locSrc:'GPS metadata', conf:83,
+   steps: [{name:'Classification', status:'complete', msg:'Wind detected (90%)'}, {name:'NER', status:'complete', msg:'Kolkata Howrah'}, {name:'Deduplication', status:'complete', msg:'Unique'}, {name:'Cross-Check', status:'complete', msg:'Matches AWS wind reading'}],
+   verify:'Matches AWS wind reading recorded minutes ago.'},
+  {city:'chennai', place:'T Nagar, Chennai', ev:'storm', st:'likely', src:'whatsapp',
+   text:'(Video, Tamil — transcribed) Thunder and lightning intensifying near the market.', locSrc:'Extracted from speech (video audio)', conf:71,
+   steps: [{name:'Classification', status:'complete', msg:'Storm detected (85%)'}, {name:'NER', status:'complete', msg:'Chennai T Nagar'}, {name:'Deduplication', status:'complete', msg:'Unique'}, {name:'Cross-Check', status:'complete', msg:'Corroborated by 1 other report'}],
+   verify:'Corroborated by one other nearby report in the last 10 minutes.'}
+];
+let nextId = 100;
+setInterval(()=>{
+  const pick = extraPool[Math.floor(Math.random()*extraPool.length)];
+  const base = cities[pick.city];
+  const jitter = (Math.random()-0.5)*0.6;
+  const newReport = Object.assign({}, pick, {
+    id: nextId++, hrs: 0.01, lat: base[0]+jitter, lon: base[1]+jitter
+  });
+  reports.unshift(newReport);
+  if(reports.length > 40) reports.pop();
+  if(currentRole === 'authority') {
+    renderPins('authMapPins'); renderFeed(); updateStats();
+  } else {
+    renderPins('publicMapPins', 'nearby');
+  }
+}, 8000);
+
+/* ---------------- Map Interactivity ---------------- */
+let mapScale = 1;
+let mapOffset = { x: 0, y: 0 };
+let isDragging = false;
+let lastMouse = { x: 0, y: 0 };
+
+function updateMapTransform() {
+  const container = document.getElementById('authMapContainer');
+  if(!container) return;
+  container.style.transform = `translate(${mapOffset.x}px, ${mapOffset.y}px) scale(${mapScale})`;
+}
+
+document.getElementById('zoomIn').addEventListener('click', () => {
+  mapScale = Math.min(mapScale + 0.2, 3);
+  updateMapTransform();
+});
+
+document.getElementById('zoomOut').addEventListener('click', () => {
+  mapScale = Math.max(mapScale - 0.2, 0.5);
+  updateMapTransform();
+});
+
+document.getElementById('resetMap').addEventListener('click', () => {
+  mapScale = 1;
+  mapOffset = { x: 0, y: 0 };
+  updateMapTransform();
+});
+
+const mapWrap = document.querySelector('.map-wrap');
+if(mapWrap) {
+  mapWrap.addEventListener('mousedown', e => {
+    if(e.target.classList.contains('map-ctrl-btn')) return;
+    isDragging = true;
+    lastMouse = { x: e.clientX, y: e.clientY };
+  });
+}
+
+window.addEventListener('mousemove', e => {
+  if(!isDragging) return;
+  const dx = e.clientX - lastMouse.x;
+  const dy = e.clientY - lastMouse.y;
+  mapOffset.x += dx;
+  mapOffset.y += dy;
+  lastMouse = { x: e.clientX, y: e.clientY };
+  updateMapTransform();
+});
+
+window.addEventListener('mouseup', () => {
+  isDragging = false;
+});
+
+/* ---------------- Init ---------------- */
+renderPins('authMapPins');
+renderPins('publicMapPins', 'nearby');
+renderFeed();
+updateStats();
+</script>
+</body>
+</html>
