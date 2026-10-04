@@ -26,7 +26,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20 # FIX: Upgraded from Node 18 to Node 20 for Vite 6 support
 
       - name: Install Dependencies
         working-directory: ./frontend
