@@ -26,11 +26,11 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20 # FIX: Upgraded from Node 18 to Node 20 for Vite 6 support
+          node-version: 20
 
       - name: Install Dependencies
         working-directory: ./frontend
-        run: npm install --legacy-peer-deps
+        run: npm install
 
       - name: Build React Vite Project
         working-directory: ./frontend
