@@ -1,8 +1,8 @@
-name: Deploy React App to GitHub Pages
+name: Deploy React Site to GitHub Pages
 
 on:
   push:
-    branches: [ main ] # Change to 'master' if your default Git branch is named master
+    branches: [ main ]
 
 permissions:
   contents: read
@@ -29,10 +29,10 @@ jobs:
           node-version: 18
 
       - name: Install Dependencies
-        run: npm ci
+        run: npm install --legacy-peer-deps
 
       - name: Build React Vite Project
-        run: npm run build
+        run: npx vite build
 
       - name: Setup GitHub Pages
         uses: actions/configure-pages@v4
