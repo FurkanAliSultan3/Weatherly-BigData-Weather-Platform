@@ -29,13 +29,11 @@ jobs:
           node-version: 18
 
       - name: Install Dependencies
-        # Replace 'SIH_weatherly' with your exact subfolder name if different
-        working-directory: ./SIH_weatherly
+        working-directory: ./frontend
         run: npm install --legacy-peer-deps
 
       - name: Build React Vite Project
-        # Replace 'SIH_weatherly' with your exact subfolder name if different
-        working-directory: ./SIH_weatherly
+        working-directory: ./frontend
         run: npm run build
 
       - name: Setup GitHub Pages
@@ -44,8 +42,7 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # Point this to the dist folder inside your subfolder!
-          path: './SIH_weatherly/dist'
+          path: './frontend/dist'
 
       - name: Deploy to GitHub Pages
         id: deployment
