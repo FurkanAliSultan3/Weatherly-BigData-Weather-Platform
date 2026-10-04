@@ -1,3 +1,16 @@
+/* 1. Tailwind import MUST be the absolute first line */
+@import "tailwindcss";
+
+/* 2. Config imports and custom variants come AFTER */
+@config "../tailwind.config.js";
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* 3. Base styles and theme overrides */
+@layer base {
+  body {
+    @apply bg-stone-50 text-stone-900 dark:bg-slate-950 dark:text-slate-100 antialiased;
+  }
+}
 .counter {
   font-size: 16px;
   padding: 5px 10px;
