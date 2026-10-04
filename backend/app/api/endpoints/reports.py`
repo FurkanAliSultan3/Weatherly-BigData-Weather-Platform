@@ -1,0 +1,98 @@
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import text
+from typing import List, Optional
+from ...db import get_db
+from ...schemas import ReportResponse, ReportCreate
+from ...services.ingestion import IngestionService
+from ...api.deps import get_current_user, RoleChecker
+from ...models.user import UserRole
+import uuid
+import os
+import shutil
+
+router = APIRouter()
+
+# Media storage config
+UPLOAD_DIR = "uploads/reports"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+@router.get("/public", response_model=List[ReportResponse])
+async def get_public_reports(db: AsyncSession = Depends(get_db)):
+    """Fetch all reports with status 'VERIFIED' or 'PENDING' returning GeoJSON format."""
+    query = text("""
+        SELECT
+            id, created_at, category, description,
+            ST_X(location::geometry) as lng,
+            ST_Y(location::geometry) as lat,
+            status, ai_confidence_score, source, media_url
+        FROM reports
+        WHERE status IN ('VERIFIED', 'PENDING')
+    """)
+    result = await db.execute(query)
+    rows = result.all()
+
+    return [
+        {
+            "id": str(row[0]),
+            "created_at": row[1],
+            "category": row[2],
+            "description": row[3],
+            "location": {"lat": row[4], "lng": row[5], "city": None, "state": None},
+            "status": row[6],
+            "ai_confidence_score": row[7],
+            "source": row[8],
+            "media_urls": [row[9]] if row[9] else []
+        } for row in rows
+    ]
+
+@router.post("/", status_code=status.HTTP_201_CREATED)
+async def submit_report(
+    category: str = Form(...),
+    description: str = Form(...),
+    latitude: float = Form(...),
+    longitude: float = Form(...),
+    intensity_score: Optional[int] = Form(None),
+    media: Optional[UploadFile] = File(None),
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Ingest new citizen submissions with deduplication and media storage."""
+    media_url = None
+    if media:
+        ext = os.path.splitext(media.filename)[1]
+        filename = f"{uuid.uuid4()}{ext}"
+        file_path = os.path.join(UPLOAD_DIR, filename)
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(media.file, buffer)
+        media_url = f"/static/uploads/{filename}"
+
+    report_in = ReportCreate(
+        category=category,
+        description=description,
+        latitude=latitude,
+        longitude=longitude,
+        intensity_score=intensity_score
+    )
+
+    service = IngestionService(db)
+    new_report = await service.process_report(
+        report_in=report_in,
+        user_id=current_user.id,
+        media_url=media_url
+    )
+
+    return {"id": new_report.id, "status": new_report.status, "is_duplicate": new_report.is_duplicate}
+
+@router.patch("/{report_id}/verify")
+async def verify_report(
+    report_id: str,
+    status: str,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(RoleChecker([UserRole.OFFICER, UserRole.IMD_ANALYST]))
+):
+    """Admin endpoint to update report status."""
+    query = text("UPDATE reports SET status = :status WHERE id = :id")
+    await db.execute(query, {"status": status, "id": report_id})
+    await db.commit()
+    return {"message": f"Report {report_id} updated to {status}"}

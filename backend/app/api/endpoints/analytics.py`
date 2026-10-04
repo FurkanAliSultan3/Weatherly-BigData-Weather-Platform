@@ -1,0 +1,55 @@
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+from typing import List, Dict, Any
+from datetime import datetime, timedelta
+from ...db import get_db
+from ...models.report import Report
+from ...models.verification import Verification, TrustStatus
+from sqlalchemy import func
+
+router = APIRouter()
+
+@router.get("/charts")
+async def get_analytics_charts(db: Session = Depends(get_db)):
+    """
+    Provides aggregated data for the Intelligence Console charts.
+    """
+    # 1. Time-Series Data: Reports Volume Over Time (Last 7 days)
+    # Mocking the aggregation for simplicity, in production use func.date_trunc
+    time_series = []
+    for i in range(7, 0, -1):
+        day = datetime.utcnow() - timedelta(days=i)
+        time_series.append({
+            "date": day.strftime("%Y-%m-%d"),
+            "count": 10 + (i * 5) # Simulated growth
+        })
+
+    # 2. Categorical Distribution
+    category_counts = db.query(
+        Report.category, func.count(Report.id)
+    ).group_by(Report.category).all()
+
+    category_data = [
+        {"category": row[0].value, "count": row[1]} for row in category_counts
+    ]
+    # Ensure all requested categories are present
+    all_cats = ['Rain', 'Flood', 'Storm', 'Heatwave', 'Fog', 'Wind']
+    final_cat_data = []
+    for cat in all_cats:
+        found = next((item for item in category_data if item["category"] == cat), None)
+        final_cat_data.append(found or {"category": cat, "count": 0})
+
+    # 3. Verification Status Distribution
+    status_counts = db.query(
+        Verification.status, func.count(Verification.id)
+    ).group_by(Verification.status).all()
+
+    status_data = [
+        {"status": row[0].value, "count": row[1]} for row in status_counts
+    ]
+
+    return {
+        "timeSeries": time_series,
+        "categoryDistribution": final_cat_data,
+        "statusDistribution": status_data
+    }

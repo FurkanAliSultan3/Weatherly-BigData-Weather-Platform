@@ -1,0 +1,174 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { analyticsApi, reportApi, createLiveFeedSocket } from '../../api/client';
+import PublicTrustMap from '../../maps/PublicTrustMap';
+import { LayoutDashboard, ShieldCheck, BrainCircuit, Clock } from 'lucide-react';
+import { useTheme } from '../../context/ThemeContext';
+import { mockReports } from '../../data/mockReports';
+
+const KPICard = ({ label, value, subValue, icon: Icon }: any) => (
+  <div className="bg-brand-off-surface border border-brand-off-hairline p-6 rounded-2xl shadow-inner transition-all hover:border-brand-off-primary/50 group">
+    <div className="flex items-center justify-between mb-4">
+      <div className="p-2 bg-brand-off-primary/10 text-brand-off-primary rounded-lg group-hover:scale-110 transition-transform">
+        <Icon size={20} />
+      </div>
+      <span className="text-[10px] font-bold text-brand-off-muted uppercase tracking-widest">Real-time</span>
+    </div>
+    <div className="space-y-1">
+      <p className="text-brand-off-body text-xs font-medium uppercase tracking-wide">{label}</p>
+      <p className="text-3xl font-bold text-brand-off-ink tracking-tight font-mono">{value}</p>
+      <p className="text-xs text-brand-off-primary font-medium">{subValue}</p>
+    </div>
+  </div>
+);
+
+const IntelligenceConsole: React.FC = () => {
+  const navigate = useNavigate();
+  const { theme } = useTheme();
+  const [kpis, setKpis] = useState<any>(null);
+  const [topReports, setTopReports] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState('ALL');
+
+  useEffect(() => {
+    const loadIntelligence = async () => {
+      try {
+        const [kpiData, reportsData] = await Promise.all([
+          analyticsApi.getKPIs(),
+          reportApi.getAdmin()
+        ]);
+        setKpis(kpiData);
+        setTopReports(reportsData.slice(0, 3));
+      } catch (e) {
+        console.error("Error loading intelligence data, falling back to mock", e);
+        setKpis({
+          totalReports: mockReports.length,
+          verifiedReports: mockReports.filter(r => r.status === 'VERIFIED').length,
+          underReview: mockReports.filter(r => r.status === 'UNVERIFIED').length,
+          suspiciousReports: mockReports.filter(r => r.status === 'FLAGGED').length,
+          systemTrustIndex: 84
+        });
+        const mapped = mockReports.slice(0, 3).map(r => ({
+          id: r.id,
+          phenomenon: r.category,
+          description: r.description,
+          location: { lat: r.lat, lng: r.lng, city: r.city, state: r.state },
+          status: r.status,
+          aiConfidence: r.ai_confidence * 100,
+          trustScore: r.ai_confidence
+        }));
+        setTopReports(mapped);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadIntelligence();
+
+    const socket = createLiveFeedSocket();
+    socket.onmessage = (event) => {
+      const report = JSON.parse(event.data);
+      setTopReports(prev => [report, ...prev].slice(0, 3));
+    };
+    return () => socket.close();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-[80vh] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-500"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <KPICard
+          label="Total Reports"
+          value={kpis?.totalReports || 0}
+          subValue="National aggregate"
+          icon={LayoutDashboard}
+        />
+        <KPICard
+          label="Verified"
+          value={kpis?.verifiedReports || 0}
+          subValue={`Trust Index: ${kpis?.systemTrustIndex || 0}%`}
+          icon={ShieldCheck}
+        />
+        <KPICard
+          label="Under review"
+          value={kpis?.underReview || 0}
+          subValue="Unverified and likely genuine"
+          icon={BrainCircuit}
+        />
+        <KPICard
+          label="Flagged"
+          value={kpis?.suspiciousReports || 0}
+          subValue="Requires analyst review"
+          icon={Clock}
+        />
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+        <div className="xl:col-span-2 h-[600px] bg-brand-off-surface rounded-3xl border border-brand-off-hairline overflow-hidden relative shadow-2xl">
+          <div className="absolute top-6 left-6 z-[1000] flex gap-3">
+            <div className="bg-brand-off-surface/80 backdrop-blur-md p-3 rounded-xl border border-brand-off-hairline text-xs text-brand-off-ink flex items-center gap-4 shadow-lg">
+              <span className="text-brand-off-muted font-bold uppercase tracking-tighter">Filter:</span>
+              <select
+                className="bg-transparent outline-none text-brand-off-primary font-medium"
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+              >
+                <option className="bg-brand-off-surface" value="ALL">All Reports</option>
+                <option className="bg-brand-off-surface" value="VERIFIED">Verified Only</option>
+                <option className="bg-brand-off-surface" value="FLAGGED">Flagged</option>
+              </select>
+            </div>
+          </div>
+          <PublicTrustMap isDarkTheme={theme === 'dark'} isOfficer statusFilter={filter} />
+        </div>
+
+        <div className="space-y-6">
+          <div className="bg-brand-off-surface border border-brand-off-hairline rounded-3xl p-6 shadow-xl">
+            <h3 className="text-xs font-bold text-brand-off-muted uppercase tracking-widest mb-6 flex items-center gap-2">
+              <BrainCircuit size={14} className="text-brand-off-primary" />
+              Recent reports
+            </h3>
+            <div className="space-y-4">
+              {topReports
+                .filter(report => filter === 'ALL' || report.status?.toUpperCase() === filter)
+                .map((report, i) => (
+                <div key={i} className="p-4 bg-brand-off-surface-card/30 rounded-2xl border border-brand-off-hairline hover:border-brand-off-primary/50 transition-all group cursor-pointer"
+                     onClick={() => navigate(`/officer/verify?id=${report.id}`)}>
+                  <div className="flex justify-between items-start mb-2">
+                    <span className="text-xs font-bold text-brand-off-ink">{report.phenomenon}</span>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
+                      report.status?.toUpperCase() === 'VERIFIED' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'
+                    }`}>
+                      {report.status}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between mt-4">
+                    <span className="text-[10px] text-brand-off-body">
+                      {[report.location?.city, report.location?.state].filter(Boolean).join(', ') || `${report.location?.lat.toFixed(3)}, ${report.location?.lng.toFixed(3)}`}
+                    </span>
+                    <span className="text-xs font-bold text-brand-off-primary">{Math.floor(report.aiConfidence || 0)}% Confidence</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={() => navigate('/officer/explorer')}
+              className="w-full mt-6 py-3 bg-brand-off-surface-card/20 hover:bg-brand-off-surface-card/40 text-brand-off-body text-xs font-bold rounded-xl transition-all border border-brand-off-hairline"
+            >
+              Explore All AI Insights
+            </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default IntelligenceConsole;

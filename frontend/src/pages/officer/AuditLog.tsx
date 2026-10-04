@@ -1,14 +1,18 @@
 import React from 'react';
-import { mockAuditLogs, AuditLogEntry } from '../../services/mockData';
-import { Clock, User, ShieldAlert, CheckCircle2 } from 'lucide-react';
+import { User, Zap } from 'lucide-react';
+import { getAuditEvents, useOfficerStoreVersion } from '../../data/officerStore';
 
 const AuditLog: React.FC = () => {
+  const storeVersion = useOfficerStoreVersion();
+  void storeVersion;
+  const logs = getAuditEvents();
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white tracking-tight">System Audit Log</h1>
-          <p className="text-slate-400 text-sm">Immutable record of all verification actions and AI classifications.</p>
+          <p className="text-slate-400 text-sm">Recorded review decisions and report classifications.</p>
         </div>
       </div>
 
@@ -25,7 +29,7 @@ const AuditLog: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800">
-              {mockAuditLogs.map((log) => (
+              {logs.map((log) => (
                 <tr key={log.id} className="hover:bg-slate-800/30 transition-colors group">
                   <td className="px-6 py-4 text-xs font-mono text-slate-500">
                     {new Date(log.timestamp).toLocaleString()}
@@ -59,6 +63,9 @@ const AuditLog: React.FC = () => {
                   </td>
                 </tr>
               ))}
+              {logs.length === 0 && (
+                <tr><td colSpan={5} className="px-6 py-16 text-center text-sm text-slate-500">No audit events have been recorded.</td></tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -66,7 +73,5 @@ const AuditLog: React.FC = () => {
     </div>
   );
 };
-
-import { Zap } from 'lucide-react'; // Fixed import
 
 export default AuditLog;

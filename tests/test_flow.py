@@ -1,7 +1,8 @@
 import asyncio
-from backend.app.services.ingestion import IngestionService
-from backend.app.services.verification import VerificationService
-from backend.app.models.report import ReportCategory
+from app.services.ingestion import IngestionService
+from app.services.verification import VerificationService
+from app.models.report import ReportCategory
+from app.models.verification import TrustStatus
 from unittest.mock import MagicMock
 
 async def test_weatherly_flow():
@@ -20,6 +21,7 @@ async def test_weatherly_flow():
         lon=78.96,
         media_url="http://example.com/flood.jpg"
     )
+    report.id = 1
     print(f" Report created. Initial Status: {verification.status.value}, Score: {verification.trust_score}")
 
     # 3. Trigger Verification Brain
@@ -37,10 +39,9 @@ async def test_weatherly_flow():
     print(f"Evidence: {updated_verification.cross_check_evidence}")
 
     # 4. Assertion
-    if updated_verification.status.value == "verified":
-        print("\n🎯 TEST PASSED: Report correctly verified against authoritative data.")
-    else:
-        print("\n TEST FAILED: Verification logic did not assign 'verified' status.")
+    assert updated_verification.status == TrustStatus.VERIFIED
+    assert updated_verification.trust_score >= 0.8
+    print("\n🎯 TEST PASSED: Report correctly verified against authoritative data.")
 
 if __name__ == "__main__":
-    asyncio.run(test_flow())
+    asyncio.run(test_weatherly_flow())

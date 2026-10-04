@@ -1,0 +1,62 @@
+from typing import List
+import re
+from .models.report import ReportCategory
+
+class AIEngine:
+    # Source credibility weights
+    SOURCE_WEIGHTS = {
+        "IMD_TELEMETRY": 1.0,
+        "CITIZEN": 0.6,
+        "NEWS_RSS": 0.5,
+        "SOCIAL_MEDIA": 0.4
+    }
+
+    # Keywords that suggest low-quality/panic reporting
+    PANIC_KEYWORDS = [
+        "OMG", "SHOCKING", "CRAZY", "END OF WORLD",
+        "SCARE", "PANIC", "UNBELIEVABLE", "!!!", "???"
+    ]
+
+    @staticmethod
+    async def calculate_trust_score(text: str, source: str) -> float:
+        """
+        Calculates a basic trust score based on source credibility
+        and text sentiment/factuality.
+        """
+        # 1. Start with source base weight
+        score = AIEngine.SOURCE_WEIGHTS.get(source, 0.4)
+
+        # 2. Text Analysis
+        if not text:
+            return score * 0.8 # Lower score for missing description
+
+        # Penalty for sensationalist language (Panic Keywords)
+        panic_count = sum(1 for word in AIEngine.PANIC_KEYWORDS if word in text.upper())
+        penalty = min(panic_count * 0.05, 0.3)
+
+        # Bonus for factual structure (e.g., mentions of specific measurements or times)
+        bonus = 0.0
+        if re.search(r"\d+mm|\d+cm|//\d{2}:\d{2}", text):
+            bonus = 0.1
+
+        final_score = score - penalty + bonus
+        return max(0.1, min(1.0, final_score))
+
+    @staticmethod
+    async def detect_duplicate(db, lat: float, lon: float, category: str):
+        """
+        PostGIS spatial deduplication check.
+        Returns the parent report ID if a duplicate is found within 5km and 30min.
+        """
+        from sqlalchemy import text
+
+        query = text("""
+            SELECT id FROM reports
+            WHERE category = :category
+            AND ST_DWithin(location, ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography, 5000)
+            AND created_at > NOW() - INTERVAL '30 minutes'
+            LIMIT 1
+        """)
+        result = await db.execute(query, {"category": category, "lon": lon, "lat": lat})
+        row = result.fetchone()
+        return row[0] if row else None

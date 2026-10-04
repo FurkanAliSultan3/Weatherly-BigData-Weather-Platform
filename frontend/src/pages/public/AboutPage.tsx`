@@ -1,0 +1,87 @@
+import React from 'react';
+import { Shield, Globe, Database, Cpu, Network } from 'lucide-react';
+
+const FeatureCard = ({ icon: Icon, title, description }: any) => (
+  <div className="p-6 bg-white rounded-3xl border border-brand-hairline shadow-sm hover:shadow-md transition-all group">
+    <div className="w-12 h-12 bg-brand-primary/10 text-brand-primary rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+      <Icon size={24} />
+    </div>
+    <h3 className="text-lg font-bold text-brand-ink mb-2">{title}</h3>
+    <p className="text-sm text-brand-body leading-relaxed">{description}</p>
+  </div>
+);
+
+const AboutPage: React.FC = () => {
+  return (
+    <div className="max-w-6xl mx-auto px-6 py-20 space-y-24">
+      {/* Hero Section */}
+      <div className="text-center space-y-6">
+        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand-primary/10 text-brand-primary text-xs font-bold uppercase tracking-widest mb-4">
+          <Shield size={14} /> Official IMD Analytics Platform
+        </div>
+        <h1 className="text-6xl font-black text-brand-ink tracking-tighter leading-tight">
+          The Future of <br />
+          <span className="italic text-brand-primary">Weather Intelligence.</span>
+        </h1>
+        <p className="text-xl text-brand-body max-w-3xl mx-auto leading-relaxed font-light opacity-80">
+          Weatherly is a next-generation Big Data Analytics platform developed for SIH 2026,
+          designed to synthesize official meteorological telemetry with ground-truth citizen observations.
+        </p>
+      </div>
+
+      {/* Architecture Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <FeatureCard
+          icon={Database}
+          title="PostGIS Big Data"
+          description="Leveraging geospatial indexing and spatial queries to process millions of weather reports in milliseconds."
+        />
+        <FeatureCard
+          icon={Cpu}
+          title="AI Trust Engine"
+          description="Multi-stage verification pipeline using NLP and image hash matching to detect and flag fake reports."
+        />
+        <FeatureCard
+          icon={Network}
+          title="Distributed Ingestion"
+          description="Seamless data flow from X (Twitter), Web Portals, and Official Radar feeds into a unified analytics stream."
+        />
+      </div>
+
+      {/* Platform Vision */}
+      <div className="bg-brand-canvas rounded-[3rem] p-12 border border-brand-hairline shadow-inner grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+        <div className="space-y-6">
+          <h2 className="text-3xl font-bold text-brand-ink tracking-tight">Our Mission</h2>
+          <p className="text-brand-body leading-relaxed text-lg">
+            By bridging the gap between official sensors and citizen eyes, we create a high-resolution
+            visibility map of weather hazards. This reduces response time for disaster management
+            and increases the accuracy of regional warnings.
+          </p>
+          <div className="flex flex-col gap-4">
+            {[
+              "Real-time ground truth verification",
+              "Automated duplicate deduplication",
+              "High-fidelity geospatial heatmapping",
+              "National-scale event clustering"
+            ].map((item, i) => (
+              <div key={i} className="flex items-center gap-3 text-sm font-bold text-brand-ink">
+                <div className="w-1.5 h-1.5 bg-brand-primary rounded-full" />
+                {item}
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="relative">
+          <div className="aspect-square bg-brand-primary/10 rounded-full blur-3xl absolute inset-0" />
+          <div className="relative bg-white p-8 rounded-[2rem] shadow-2xl border border-brand-hairline text-center">
+            <Globe size={64} className="mx-auto text-brand-primary mb-4" />
+            <h3 className="text-xl font-bold text-brand-ink mb-2">SIH 2026</h3>
+            <p className="text-xs text-brand-muted uppercase font-black tracking-widest">IMD Analytics Hub</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default AboutPage;

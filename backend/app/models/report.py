@@ -5,6 +5,7 @@ from .base import Base, TimestampMixin
 import enum
 
 class ReportCategory(enum.Enum):
+    RAIN = "rain"
     FLOOD = "flood"
     HEATWAVE = "heatwave"
     STORM = "storm"
@@ -32,4 +33,4 @@ class Report(Base, TimestampMixin):
 
     # Relationships
     user = relationship("User", backref="reports")
-    verifications = relationship("Verification", back_populates="report")
+    verification = relationship("Verification", back_populates="report", uselist=False)

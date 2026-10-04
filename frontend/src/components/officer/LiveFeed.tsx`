@@ -1,0 +1,106 @@
+import React, { useState, useEffect } from 'react';
+import { ShieldCheck, AlertTriangle, XCircle, Zap, BrainCircuit, Globe, MapPin, Clock } from 'lucide-react';
+import { reportApi } from '../../api/client';
+import { WeatherReport } from '../../types';
+
+const AIVerificationCard = ({ report, onSelect }: any) => {
+  const isFlagged = report.status === 'flagged' || report.status === 'suspicious';
+
+  return (
+    <div
+      onClick={() => onSelect(report)}
+      className={`p-4 rounded-2xl border transition-all group cursor-pointer ${
+        isFlagged
+          ? 'bg-rose-500/5 border-rose-500/20 shadow-lg shadow-rose-500/5'
+          : 'bg-brand-off-surface-card/30 border-brand-off-hairline hover:border-brand-off-primary/50'
+      }`}
+    >
+      <div className="flex justify-between items-start mb-3">
+        <div className="flex items-center gap-2">
+          <div className={`p-1.5 rounded-lg ${
+            report.status === 'verified' ? 'bg-emerald-500/20 text-emerald-400' :
+            isFlagged ? 'bg-rose-500/20 text-rose-400' : 'bg-amber-500/20 text-amber-400'
+          }`}>
+            {report.status === 'verified' ? <ShieldCheck size={14} /> : <AlertTriangle size={14} />}
+          </div>
+          <span className="text-xs font-bold text-brand-off-ink">{report.phenomenon}</span>
+        </div>
+        <span className="text-[10px] font-mono text-brand-off-muted">{report.id}</span>
+      </div>
+
+      <p className="text-xs text-brand-off-body line-clamp-2 mb-4 italic opacity-80">"{report.description}"</p>
+
+      <div className="grid grid-cols-2 gap-2 mb-2">
+        <div className="p-2 bg-brand-off-surface rounded-lg border border-brand-off-hairline">
+          <p className="text-[9px] text-brand-off-muted uppercase font-bold">Trust Score</p>
+          <p className="text-xs font-mono font-bold text-brand-off-ink">{report.trustScore.toFixed(2)}</p>
+        </div>
+        <div className="p-2 bg-brand-off-surface rounded-lg border border-brand-off-hairline">
+          <p className="text-[9px] text-brand-off-muted uppercase font-bold">AI Confidence</p>
+          <p className="text-xs font-mono font-bold text-brand-off-primary">{Math.floor(report.aiConfidence)}%</p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const LiveFeed: React.FC<{ onReportSelect: (report: any) => void }> = ({ onReportSelect }) => {
+  const [reports, setReports] = useState<WeatherReport[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchFeed = async () => {
+      try {
+        const data = await reportApi.getAdmin();
+        setReports(data);
+      } catch (e) {
+        console.error("Feed error", e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchFeed();
+  }, []);
+
+  return (
+    <aside className="w-full h-full flex flex-col bg-[#0B0F17] border-l border-brand-off-hairline overflow-hidden">
+      <div className="p-6 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Zap size={18} className="text-brand-off-primary animate-pulse" />
+          <h3 className="text-xs font-black uppercase tracking-widest text-brand-off-ink">Live Ingestion Feed</h3>
+        </div>
+        <span className="text-[10px] font-mono text-brand-off-muted">{reports.length} Active</span>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-6 space-y-4 pb-8 custom-scrollbar">
+        {loading ? (
+          <div className="space-y-4">
+            {[1,2,3,4,5].map(i => (
+              <div key={i} className="h-32 bg-brand-off-surface border border-brand-off-hairline rounded-2xl animate-pulse" />
+            ))}
+          </div>
+        ) : (
+          reports.map((report) => (
+            <AIVerificationCard
+              key={report.id}
+              report={report}
+              onSelect={onReportSelect}
+            />
+          ))
+        )}
+      </div>
+
+      <div className="p-6 bg-brand-off-surface border-t border-brand-off-hairline">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-[10px] font-bold text-brand-off-muted uppercase">System Health</span>
+          <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+        </div>
+        <div className="w-full bg-brand-off-hairline h-1 rounded-full overflow-hidden">
+          <div className="bg-emerald-500 h-full w-full animate-pulse" />
+        </div>
+      </div>
+    </aside>
+  );
+};
+
+export default LiveFeed;

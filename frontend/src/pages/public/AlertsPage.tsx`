@@ -1,0 +1,72 @@
+import React from 'react';
+import { AlertTriangle, Bell, MapPin } from 'lucide-react';
+
+const AlertCard = ({ region, level, message, timestamp }: any) => {
+  const colors = {
+    'Red': 'bg-rose-500 text-white border-rose-600',
+    'Orange': 'bg-amber-500 text-white border-amber-600',
+    'Yellow': 'bg-yellow-400 text-slate-900 border-yellow-500',
+  };
+
+  return (
+    <div className={`p-6 rounded-3xl border-l-8 shadow-lg transition-all hover:scale-[1.02] ${colors[level] || 'bg-slate-100 text-slate-900 border-slate-300'}`}>
+      <div className="flex justify-between items-start mb-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
+            <AlertTriangle size={20} />
+          </div>
+          <div>
+            <h3 className="font-black text-lg uppercase tracking-tight">{level} Alert: {region}</h3>
+            <p className="text-xs opacity-80 font-medium">{timestamp}</p>
+          </div>
+        </div>
+        <div className="px-3 py-1 bg-white/20 rounded-full text-[10px] font-bold uppercase">
+          Active
+        </div>
+      </div>
+      <p className="text-sm font-medium leading-relaxed opacity-90">
+        {message}
+      </p>
+      <div className="mt-6 flex items-center justify-between">
+        <div className="flex items-center gap-2 text-[10px] font-bold uppercase opacity-70">
+          <MapPin size={12} />
+          <span>Regional IMD Node: {region}</span>
+        </div>
+        <button className="px-4 py-2 bg-white text-slate-900 rounded-xl text-xs font-bold hover:bg-opacity-90 transition-all">
+          View on Map
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const AlertsPage: React.FC = () => {
+  const alerts = [
+    { region: 'Mumbai', level: 'Red', message: 'Extremely heavy rainfall predicted for the next 24 hours. Avoid coastal areas and low-lying zones.', timestamp: 'Updated 12 mins ago' },
+    { region: 'Delhi NCR', level: 'Orange', message: 'Severe heatwave warning. Maximum temperatures expected to cross 45°C. Stay hydrated.', timestamp: 'Updated 1 hour ago' },
+    { region: 'Punjab', level: 'Yellow', message: 'Dense fog advisory for early morning commuters. Visibility reduced to < 50m.', timestamp: 'Updated 4 hours ago' },
+    { region: 'Odisha', level: 'Red', message: 'Flash flood warning for coastal districts. Evacuation orders in effect for Zone B.', timestamp: 'Updated 30 mins ago' },
+  ];
+
+  return (
+    <div className="max-w-5xl mx-auto px-6 py-20 space-y-12">
+      <div className="text-center space-y-4">
+        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-rose-100 text-rose-600 text-xs font-bold uppercase tracking-widest mb-4">
+          <Bell size={14} /> Live Warning Feed
+        </div>
+        <h1 className="text-5xl font-black text-slate-900 tracking-tighter">Critical Weather Alerts</h1>
+        <p className="text-slate-500 text-lg max-w-2xl mx-auto">
+          Real-time emergency advisories synchronized with the National Weather Intelligence network.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {alerts.map((alert, i) => (
+          <AlertCard key={i} {...alert} />
+        ))}
+      </div>
+    </div>
+  );
+};
+
+export default AlertsPage;

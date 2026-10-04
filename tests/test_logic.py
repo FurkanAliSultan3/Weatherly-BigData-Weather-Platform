@@ -1,9 +1,9 @@
 import asyncio
 from unittest.mock import MagicMock
-from backend.app.models.report import Report, ReportCategory
-from backend.app.models.verification import Verification, TrustStatus
-from backend.app.services.ingestion import IngestionService
-from backend.app.services.verification import VerificationService
+from app.models.report import Report, ReportCategory
+from app.models.verification import Verification, TrustStatus
+from app.services.ingestion import IngestionService
+from app.services.verification import VerificationService
 
 async def test_trust_engine():
     print("--- WEATHERLY BUSINESS LOGIC TEST ---")
@@ -21,6 +21,7 @@ async def test_trust_engine():
         lat=20.59,
         lon=78.96
     )
+    report.id = 1
     print(f"✅ Report created. Initial Status: {verification.status.value}")
 
     # 3. Simulate Verification Brain
@@ -37,10 +38,9 @@ async def test_trust_engine():
     print(f"✅ Evidence: {updated_verification.cross_check_evidence}")
 
     # 4. Validation
-    if updated_verification.status == TrustStatus.VERIFIED:
-        print("\n🎯 RESULT: SUCCESS. The system correctly identified a verified event.")
-    else:
-        print("\n❌ RESULT: FAILED. The trust score was not upgraded.")
+    assert updated_verification.status == TrustStatus.VERIFIED
+    assert updated_verification.trust_score >= 0.8
+    print("\n🎯 RESULT: SUCCESS. The system correctly identified a verified event.")
 
 if __name__ == "__main__":
     asyncio.run(test_trust_engine())

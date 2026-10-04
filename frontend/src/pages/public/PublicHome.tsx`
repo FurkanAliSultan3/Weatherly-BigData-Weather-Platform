@@ -1,0 +1,308 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import PublicTrustMap from '../../maps/PublicTrustMap';
+import { reportApi, analyticsApi } from '../../api/client';
+import { Map, AlertTriangle, CheckCircle, Clock, FileText, ArrowUpRight, Search, TrendingUp, Globe, Zap, Shield, Bell } from 'lucide-react';
+import { WeatherReport } from '../../services/mockData';
+
+const StatCard = ({ label, value, icon: Icon, color, trend }: any) => (
+  <div className="glass-card p-8 rounded-3xl flex flex-col gap-4 transition-all duration-500 hover:shadow-2xl hover:-translate-y-2 group border border-white/40 bg-white/60 backdrop-blur-md">
+    <div className={`w-12 h-12 rounded-2xl ${color} flex items-center justify-center text-white shadow-lg transition-transform group-hover:scale-110 group-hover:rotate-3`}>
+      <Icon size={24} />
+    </div>
+    <div className="flex flex-col">
+      <p className="text-xs font-bold text-brand-off-muted uppercase tracking-widest mb-1">{label}</p>
+      <div className="flex items-baseline gap-2">
+        <p className="text-4xl font-bold text-brand-ink font-mono tracking-tighter">{value}</p>
+        {trend && (
+          <span className="text-xs font-bold text-emerald-600 flex items-center gap-0.5 bg-emerald-100 px-2 py-0.5 rounded-full">
+            <TrendingUp size={12} /> {trend}
+          </span>
+        )}
+      </div>
+    </div>
+  </div>
+);
+
+const CITY_COORDS: Record<string, [number, number]> = {
+  'Delhi': [28.6139, 77.2090],
+  'Mumbai': [19.0760, 72.8777],
+  'Chennai': [13.0827, 80.2707],
+  'Kolkata': [22.5726, 88.3639],
+  'Bangalore': [12.9716, 77.5946],
+};
+
+const PublicHome: React.FC = () => {
+  const navigate = useNavigate();
+  const [kpis, setKpis] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedReport, setSelectedReport] = useState<WeatherReport | null>(null);
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const data = await analyticsApi.getKPIs();
+        setKpis(data);
+      } catch (e) {
+        console.error("Error loading public KPIs", e);
+        setKpis({
+          totalReports: 1248,
+          verifiedReports: 842,
+          underReview: 406,
+          activeAlerts: 12,
+          systemTrustIndex: 88
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-brand-canvas">
+        <div className="relative">
+          <div className="h-16 w-16 border-4 border-brand-hairline border-t-brand-primary rounded-full animate-spin" />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="h-2 w-2 bg-brand-primary rounded-full animate-ping" />
+          </div>
+        </div>
+        <p className="mt-6 text-brand-body font-medium animate-pulse uppercase tracking-widest text-xs">Synchronizing Intelligence...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-brand-canvas min-h-screen pb-24 relative">
+      {/* --- REPORT DETAIL DRAWER --- */}
+      {selectedReport && (
+        <div className="fixed inset-y-0 right-0 z-[2000] w-full max-w-md bg-white shadow-[-20px_0_50px_rgba(0,0,0,0.1)] border-l border-brand-hairline animate-in slide-in-from-right duration-500">
+          <div className="h-full flex flex-col p-8">
+            <button onClick={() => setSelectedReport(null)} className="self-end p-2 text-slate-400 hover:text-slate-600">✕</button>
+            <h3 className="text-2xl font-bold text-brand-ink">{selectedReport.phenomenon}</h3>
+            <p className="text-brand-body mt-4 italic">"{selectedReport.description}"</p>
+            <div className="mt-6 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+               <p className="text-xs font-bold text-slate-400 uppercase">AI Confidence</p>
+               <p className="text-2xl font-mono font-bold text-brand-primary">{(selectedReport.trustScore * 100).toFixed(0)}%</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- HERO SECTION --- */}
+      <section className="relative pt-20 pb-32 px-6 overflow-hidden">
+        <div className="absolute top-0 right-0 -translate-y-1/4 translate-x-1/4 w-[600px] h-[600px] bg-brand-primary/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-0 translate-y-1/4 -translate-x-1/4 w-[400px] h-[400px] bg-brand-primary/5 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+          <div className="space-y-10 relative z-10">
+            <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full bg-white border border-brand-hairline shadow-sm">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-primary opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-brand-primary"></span>
+              </span>
+              <span className="text-xs font-bold text-brand-body uppercase tracking-[0.2em]">National Intelligence Portal</span>
+            </div>
+
+            <h1 className="text-7xl md:text-9xl font-normal text-brand-ink leading-[0.9] tracking-tighter">
+              Weather <br />
+              <span className="italic text-brand-primary">Intelligence.</span>
+            </h1>
+
+            <p className="text-xl text-brand-body max-w-xl leading-relaxed font-light opacity-80">
+              Combining official IMD telemetry with real-time citizen observations to build India's most trusted weather awareness network.
+            </p>
+
+            <div className="flex flex-wrap gap-6">
+              <button
+                onClick={() => navigate('/report')}
+                className="btn-primary px-8 py-4 rounded-2xl flex items-center gap-3 group text-lg shadow-xl shadow-brand-primary/20"
+              >
+                Report Event <ArrowUpRight size={20} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+              </button>
+              <button
+                onClick={() => navigate('/alerts')}
+                className="btn-secondary px-8 py-4 rounded-2xl text-lg"
+              >
+                Explore Alerts
+              </button>
+            </div>
+          </div>
+
+          <div className="relative hidden lg:block">
+            <div className="relative z-10 bg-white/40 backdrop-blur-2xl rounded-[3rem] p-8 border border-white shadow-2xl ring-1 ring-black/5">
+               {/* POPULATED HERO HEADER CARD */}
+               <div className="space-y-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 bg-brand-primary text-white rounded-lg">
+                        <Activity size={18} />
+                      </div>
+                      <h3 className="text-sm font-bold text-brand-ink">System Status</h3>
+                    </div>
+                    <span className="text-[10px] font-mono text-emerald-500 font-bold">● LIVE</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="p-4 bg-white/60 rounded-2xl border border-white shadow-sm flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <AlertTriangle size={18} className="text-rose-500" />
+                        <span className="text-xs font-bold text-brand-ink">National Active Hazards</span>
+                      </div>
+                      <span className="text-sm font-black text-rose-600">{kpis?.activeAlerts || 12} Warnings</span>
+                    </div>
+                    <div className="p-4 bg-white/60 rounded-2xl border border-white shadow-sm flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Globe size={18} className="text-blue-500" />
+                        <span className="text-xs font-bold text-brand-ink">AI Scraped Data Sources</span>
+                      </div>
+                      <span className="text-sm font-black text-brand-ink">5 Active Feeds</span>
+                    </div>
+                  </div>
+
+                  {/* Mini Alert Ticker */}
+                  <div className="mt-6 p-3 bg-brand-ink rounded-2xl overflow-hidden relative">
+                    <div className="flex animate-marquee whitespace-nowrap">
+                      <span className="text-white text-[10px] font-mono uppercase tracking-tighter mx-4">
+                        🔴 RED ALERT: Heavy Rainfall in Mumbai • 🟠 ORANGE ALERT: Heatwave in Delhi • 🟡 YELLOW ALERT: Dense Fog in Punjab • 🔴 RED ALERT: Flash Floods in Odisha
+                      </span>
+                      <span className="text-white text-[10px] font-mono uppercase tracking-tighter mx-4">
+                        🔴 RED ALERT: Heavy Rainfall in Mumbai • 🟠 ORANGE ALERT: Heatwave in Delhi • 🟡 YELLOW ALERT: Dense Fog in Punjab • 🔴 RED ALERT: Flash Floods in Odisha
+                      </span>
+                    </div>
+                  </div>
+               </div>
+               <div className="absolute -bottom-6 -right-6 bg-brand-ink p-6 rounded-3xl shadow-2xl border border-white/10 animate-bounce">
+                  <div className="flex items-center gap-4">
+                      <div className="p-3 bg-brand-primary/20 text-brand-primary rounded-xl">
+                          <Shield size={24} />
+                      </div>
+                      <div className="font-mono">
+                          <p className="text-[10px] text-brand-body uppercase font-bold opacity-60">System Health</p>
+                          <p className="text-sm font-bold text-white">All Nodes Active</p>
+                      </div>
+                  </div>
+               </div>
+            </div>
+            <div className="absolute inset-0 border-2 border-brand-primary/20 rounded-full scale-110 blur-sm animate-pulse" />
+          </div>
+        </div>
+      </section>
+
+      <section className="max-w-7xl mx-auto px-6 mb-24">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-12">
+          <div className="lg:col-span-3 h-[750px] rounded-[3rem] overflow-hidden border-[12px] border-white shadow-2xl relative group transition-all hover:shadow-brand-primary/10">
+            <PublicTrustMap onReportSelect={setSelectedReport} />
+            <div className="absolute bottom-10 left-10 z-[1000] bg-white/90 backdrop-blur-2xl p-8 rounded-[2rem] border border-white shadow-2xl max-w-xs transition-all duration-500 group-hover:translate-x-2 group-hover:-translate-y-2">
+              <h3 className="text-xs font-black text-brand-muted uppercase tracking-[0.2em] mb-6 flex items-center gap-3">
+                  <div className="w-1.5 h-6 bg-brand-primary rounded-full" />
+                  Map Intelligence
+              </h3>
+              <div className="space-y-4">
+                {[
+                  { color: 'bg-emerald-500', label: 'Verified', desc: 'Official confirmation' },
+                  { color: 'bg-amber-500', label: 'Likely', desc: 'High trust score' },
+                  { color: 'bg-slate-400', label: 'Pending', desc: 'Awaiting review' },
+                ].map((item, i) => (
+                  <div key={i} className="flex items-center gap-4 group/item cursor-default">
+                    <div className={`w-3 h-3 rounded-full ${item.color} ring-4 ring-white shadow-sm transition-transform group-hover/item:scale-150`} />
+                    <div className="flex flex-col">
+                      <span className="text-xs font-bold text-brand-ink">{item.label}</span>
+                      <span className="text-[10px] text-brand-body">{item.desc}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-8">
+            <div className="bg-brand-primary rounded-[2.5rem] p-8 text-white shadow-2xl shadow-brand-primary/30 relative overflow-hidden group transition-all hover:bg-brand-primary-active">
+              <div className="absolute -right-12 -top-12 opacity-10 group-hover:rotate-12 transition-transform duration-700">
+                <AlertTriangle size={200} />
+              </div>
+              <div className="relative z-10">
+                  <div className="p-3 bg-white/20 w-fit rounded-2xl mb-6 backdrop-blur-md">
+                      <AlertTriangle size={24} className="text-white" />
+                  </div>
+                  <h3 className="text-3xl font-bold mb-4 leading-tight tracking-tight">Active Alerts</h3>
+                  <p className="text-white/80 text-sm mb-8 leading-relaxed font-light">
+                      {kpis?.activeAlerts || 0} critical alerts active across India. Stay updated with regional advisories.
+                  </p>
+                  <button
+                    onClick={() => navigate('/alerts')}
+                    className="w-full py-4 bg-white text-brand-primary rounded-2xl font-bold text-sm hover:bg-slate-50 transition-all active:scale-95 shadow-xl"
+                  >
+                      View Detailed Alerts
+                  </button>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-[2.5rem] p-8 border border-brand-hairline shadow-xl space-y-6">
+              <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-black text-brand-muted uppercase tracking-widest">Quick Search</h3>
+                  <Search size={18} className="text-brand-muted" />
+              </div>
+              <div className="relative group">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search city, state or region..."
+                  className="w-full px-6 py-4 bg-brand-canvas/50 border border-brand-off-hairline rounded-2xl text-sm focus:ring-4 focus:ring-brand-primary/10 focus:border-brand-primary outline-none transition-all group-hover:bg-white"
+                />
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {Object.keys(CITY_COORDS).map(city => (
+                  <button
+                      key={city}
+                      className="px-4 py-2 bg-brand-canvas text-brand-body rounded-xl text-xs font-medium hover:bg-brand-primary hover:text-white transition-all duration-300 border border-brand-hairline"
+                  >
+                    {city}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="max-w-7xl mx-auto px-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <StatCard
+              label="Citizen Reports"
+              value={kpis?.totalReports || 0}
+              icon={FileText}
+              color="bg-indigo-500"
+              trend="+12%"
+          />
+          <StatCard
+              label="Verified Events"
+              value={kpis?.verifiedReports || 0}
+              icon={CheckCircle}
+              color="bg-emerald-500"
+              trend="+5%"
+          />
+          <StatCard
+              label="Under Review"
+              value={kpis?.underReview || 0}
+              icon={Clock}
+              color="bg-amber-500"
+              trend="-2%"
+              />
+          <StatCard
+              label="Active Alerts"
+              value={kpis?.activeAlerts || 0}
+              icon={AlertTriangle}
+              color="bg-rose-500"
+              trend="+8%"
+          />
+        </div>
+      </section>
+    </div>
+  );
+};
+
+export default PublicHome;

@@ -1,51 +1,55 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import PublicLayout from './layouts/PublicLayout';
 import OfficerLayout from './layouts/OfficerLayout';
 
-// Lazy load pages to avoid massive initial bundle
-const PublicHome = React.lazy(() => import('./pages/public/PublicHome'));
-const ReportingPage = React.lazy(() => import('./pages/public/ReportingPage'));
-const AlertsPage = React.lazy(() => import('./pages/public/AlertsPage'));
-const AboutPage = React.lazy(() => import('./pages/public/AboutPage'));
-const IntelligenceConsole = React.lazy(() => import('./pages/officer/IntelligenceConsole'));
-const VerificationCenter = React.lazy(() => import('./pages/officer/VerificationCenter'));
-const ReportExplorer = React.lazy(() => import('./pages/officer/ReportExplorer'));
-const AnalyticsDashboard = React.lazy(() => import('./pages/officer/AnalyticsDashboard'));
-const AuditLog = React.lazy(() => import('./pages/officer/AuditLog'));
+// Import pages directly
+import PublicHome from './pages/public/PublicHome';
+import ReportingPage from './pages/public/ReportingPage';
+import AlertsPage from './pages/public/AlertsPage';
+import BroadcastSafeZones from './pages/public/BroadcastSafeZones';
+import AboutPage from './pages/public/AboutPage';
+import IntelligenceConsole from './pages/officer/IntelligenceConsole';
+import VerificationCenter from './pages/officer/VerificationCenter';
+import ReportExplorer from './pages/officer/ReportExplorer';
+import AnalyticsDashboard from './pages/officer/AnalyticsDashboard';
+import AuditLog from './pages/officer/AuditLog';
+import LiveIntelligenceMap from './pages/officer/LiveIntelligenceMap';
+import DataSources from './pages/officer/DataSources';
+import BroadcastManagement from './pages/officer/BroadcastManagement';
 
 const App: React.FC = () => {
   return (
-    <BrowserRouter>
-      <React.Suspense fallback={
-        <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-500">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <span className="ml-3 font-medium">Loading Intelligence...</span>
-        </div>
-      }>
-        <Routes>
-          {/* Public Routes */}
-          <Route path="/" element={<PublicLayout />}>
-            <Route index element={<PublicHome />} />
-            <Route path="report" element={<ReportingPage />} />
-            <Route path="alerts" element={<AlertsPage />} />
-            <Route path="about" element={<AboutPage />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Route>
+    <Routes>
+      {/* Public Routes */}
+      <Route path="/" element={<PublicLayout />}>
+        <Route index element={<PublicHome />} />
+        <Route path="report" element={<ReportingPage />} />
+        <Route path="alerts" element={<AlertsPage />} />
+        <Route path="safe-zones" element={<BroadcastSafeZones />} />
+        <Route path="about" element={<AboutPage />} />
+        <Route path="officer/login" element={<Navigate to="/officer/console" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Route>
 
-          {/* Officer Routes */}
-          <Route path="/officer" element={<OfficerLayout />}>
-            <Route path="console" element={<IntelligenceConsole />} />
-            <Route path="verify" element={<VerificationCenter />} />
-            <Route path="explorer" element={<ReportExplorer />} />
-            <Route path="analytics" element={<AnalyticsDashboard />} />
-            <Route path="audit" element={<AuditLog />} />
-            <Route index element={<Navigate to="console" replace />} />
-            <Route path="*" element={<Navigate to="console" replace />} />
-          </Route>
-        </Routes>
-      </React.Suspense>
-    </BrowserRouter>
+      {/* Officer Routes - Now Protected */}
+      <Route
+        path="/officer"
+        element={<OfficerLayout />}
+      >
+        <Route path="console" element={<IntelligenceConsole />} />
+        <Route path="map" element={<LiveIntelligenceMap />} />
+        <Route path="verification" element={<VerificationCenter />} />
+        <Route path="verify" element={<VerificationCenter />} />
+        <Route path="explorer" element={<ReportExplorer />} />
+        <Route path="analytics" element={<AnalyticsDashboard />} />
+        <Route path="sources" element={<DataSources />} />
+        <Route path="broadcast" element={<BroadcastManagement />} />
+        <Route path="audit" element={<AuditLog />} />
+        <Route index element={<Navigate to="console" replace />} />
+        <Route path="*" element={<Navigate to="console" replace />} />
+      </Route>
+    </Routes>
   );
 };
 

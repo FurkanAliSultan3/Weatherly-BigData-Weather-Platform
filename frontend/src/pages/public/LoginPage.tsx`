@@ -1,0 +1,100 @@
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { analyticsApi } from '../api/client';
+import { useAuth } from '../context/AuthContext';
+import { Lock, AlertCircle, Loader2 } from 'lucide-react';
+
+const LoginPage: React.FC = () => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
+  const { login } = useAuth();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    try {
+      // FastAPI OAuth2PasswordRequestForm expects form-data with 'username' and 'password'
+      const formData = new FormData();
+      formData.append('username', email);
+      formData.append('password', password);
+
+      const response = await fetch('http://localhost:8000/api/v1/auth/login', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) throw new Error('Invalid credentials');
+
+      const data = await response.json();
+      login(data.access_token, data.user);
+      navigate('/officer/console');
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-brand-off-canvas flex items-center justify-center p-6">
+      <div className="max-w-md w-full bg-brand-off-surface border border-brand-off-hairline rounded-3xl shadow-2xl p-10 space-y-8">
+        <div className="text-center space-y-2">
+          <div className="mx-auto w-16 h-16 bg-brand-off-primary/10 text-brand-off-primary rounded-2xl flex items-center justify-center mb-6">
+            <Lock size={32} />
+          </div>
+          <h1 className="text-2xl font-black text-brand-off-ink tracking-tight">Officer Access</h1>
+          <p className="text-brand-off-body text-sm">Enter your credentials to access the Intelligence Console</p>
+        </div>
+
+        {error && (
+          <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-xl text-xs font-bold flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
+            <AlertCircle size={16} />
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-2">
+            <label className="text-[10px] font-bold text-brand-off-muted uppercase tracking-widest ml-1">Email Address</label>
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-4 py-3 bg-brand-off-canvas border border-brand-off-hairline rounded-xl text-sm text-brand-off-ink outline-none focus:border-brand-off-primary transition-all"
+              placeholder="officer@imd.gov.in"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-[10px] font-bold text-brand-off-muted uppercase tracking-widest ml-1">Password</label>
+            <input
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-4 py-3 bg-brand-off-canvas border border-brand-off-hairline rounded-xl text-sm text-brand-off-ink outline-none focus:border-brand-off-primary transition-all"
+              placeholder="••••••••"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-3 bg-brand-off-primary text-white font-bold rounded-xl hover:bg-brand-off-primary-active transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50"
+          >
+            {loading ? <Loader2 className="animate-spin" size={20} /> : 'Authorize Access'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+const Loader2 = ({ className, size }: any) => <div className={`w-5 h-5 border-2 border-white/30 border-t-white rounded-full ${className}`} />;
+
+export default LoginPage;

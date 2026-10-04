@@ -1,0 +1,1 @@
+ALTER TYPE reportcategory ADD VALUE IF NOT EXISTS 'RAIN';

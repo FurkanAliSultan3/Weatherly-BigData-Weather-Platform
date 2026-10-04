@@ -1,0 +1,148 @@
+import React from 'react';
+import { X, ShieldCheck, AlertTriangle, Trash2, MapPin, Clock, ImageIcon } from 'lucide-react';
+import { reportApi } from '../../api/client';
+
+interface ReportDetailDrawerProps {
+  report: any | null;
+  isOpen: boolean;
+  onClose: () => void;
+  onAction: (status: string) => Promise<void>;
+}
+
+const ReportDetailDrawer: React.FC<ReportDetailDrawerProps> = ({ report, isOpen, onClose, onAction }) => {
+  if (!report) return null;
+
+  const getTrustColor = (score: number) => {
+    if (score >= 0.8) return 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20';
+    if (score >= 0.5) return 'text-amber-400 bg-amber-500/10 border-amber-500/20';
+    return 'text-rose-400 bg-rose-500/10 border-rose-500/20';
+  };
+
+  return (
+    <div className={`fixed inset-y-0 right-0 z-[2000] w-[420px] bg-[#0B0F17] border-l border-brand-off-hairline shadow-2xl transition-transform duration-300 ease-in-out ${
+      isOpen ? 'translate-x-0' : 'translate-x-full'
+    }`}>
+      <div className="h-full flex flex-col p-6">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-2">
+            <div className="p-2 bg-brand-off-primary/10 text-brand-off-primary rounded-lg">
+              <ShieldCheck size={20} />
+            </div>
+            <h3 className="text-lg font-black text-brand-off-ink tracking-tight">Report Analysis</h3>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-brand-off-surface rounded-full transition-colors text-brand-off-muted"
+          >
+            <X size={24} />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto custom-scrollbar space-y-8">
+          {/* Report Header */}
+          <div className="space-y-4">
+            <div className="flex justify-between items-start">
+              <div className="space-y-1">
+                <h2 className="text-2xl font-bold text-brand-off-ink">{report.phenomenon}</h2>
+                <div className="flex items-center gap-2 text-brand-off-muted text-xs">
+                  <MapPin size={14} />
+                  <span>{report.location.city || 'Unknown'}, {report.location.state || 'India'}</span>
+                </div>
+                <div className="flex items-center gap-2 text-brand-off-muted text-xs">
+                  <Clock size={14} />
+                  <span>{new Date(report.timestamp).toLocaleString()}</span>
+                </div>
+              </div>
+              <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${
+                report.status === 'verified' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                report.status === 'flagged' ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' :
+                'bg-amber-500/10 text-amber-400 border-amber-500/20'
+              }`}>
+                {report.status}
+              </span>
+            </div>
+            <p className="text-brand-off-body leading-relaxed italic p-4 bg-brand-off-surface rounded-2xl border border-brand-off-hairline">
+              "{report.description}"
+            </p>
+          </div>
+
+          {/* AI Verification Index Card */}
+          <div className={`p-6 rounded-3xl border ${getTrustColor(report.trustScore)} transition-all`}>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <BrainCircuit size={18} />
+                <span className="text-xs font-black uppercase tracking-widest">AI Trust Index</span>
+              </div>
+              <span className="text-2xl font-black font-mono">{(report.trustScore * 100).toFixed(0)}%</span>
+            </div>
+            <div className="w-full h-3 bg-brand-off-canvas rounded-full overflow-hidden">
+              <div
+                className="h-full bg-current transition-all duration-1000"
+                style={{ width: `${report.trustScore * 100}%` }}
+              />
+            </div>
+            <p className="mt-3 text-[10px] opacity-80 font-medium">
+              Cross-referenced with IMD Satellite Feed & Historical Pattern Analysis.
+            </p>
+          </div>
+
+          {/* Media Preview Box */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-xs font-bold text-brand-off-muted uppercase tracking-widest">
+              <ImageIcon size={14} />
+              <span>Visual Evidence</span>
+            </div>
+            <div className="aspect-video rounded-2xl overflow-hidden border border-brand-off-hairline bg-brand-off-surface relative group">
+              {report.media && report.media[0] ? (
+                <img
+                  src={report.media[0]}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  alt="Report evidence"
+                />
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center text-brand-off-muted gap-2">
+                  <ImageIcon size={32} opacity={0.2} />
+                  <span className="text-[10px] uppercase font-bold opacity-40">No Media Attached</span>
+                </div>
+              )}
+              {report.location && (
+                <div className="absolute bottom-3 left-3 px-2 py-1 bg-black/60 backdrop-blur-md text-white text-[10px] rounded-md font-mono border border-white/10">
+                  GPS: {report.location.lat.toFixed(4)}, {report.location.lng.toFixed(4)}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Action Button Row */}
+        <div className="pt-8 border-t border-brand-off-hairline grid grid-cols-1 gap-3">
+          <button
+            onClick={() => onAction('verified')}
+            className="flex items-center justify-center gap-2 py-3 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold rounded-xl transition-all active:scale-95 shadow-lg shadow-emerald-500/20"
+          >
+            <ShieldCheck size={18} /> Verify Report
+          </button>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => onAction('suspicious')}
+              className="flex items-center justify-center gap-2 py-3 bg-brand-off-surface hover:bg-amber-500/10 text-amber-400 text-xs font-bold rounded-xl transition-all border border-brand-off-hairline hover:border-amber-500/40"
+            >
+              <AlertTriangle size={16} /> Flag Fake
+            </button>
+            <button
+              onClick={() => onAction('flagged')}
+              className="flex items-center justify-center gap-2 py-3 bg-brand-off-surface hover:bg-rose-500/10 text-rose-400 text-xs font-bold rounded-xl transition-all border border-brand-off-hairline hover:border-rose-500/40"
+            >
+              <Trash2 size={16} /> Mark Duplicate
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const BrainCircuit = ({ size }: any) => <div className="w-4 h-4 bg-brand-off-primary rounded-full animate-pulse" />;
+
+export default ReportDetailDrawer;

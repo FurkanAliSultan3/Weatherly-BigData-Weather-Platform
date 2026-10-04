@@ -1,39 +1,36 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from typing import List, Optional
-from datetime import datetime
-from ...db import get_db
-from ...api.deps import get_current_user, RoleChecker
-from ...models.report import Report, ReportCategory
-from ...models.verification import Verification, TrustStatus
-from ...models.user import UserRole
-from ...schemas.index import (
+from app.db import get_db
+from app.models.report import Report, ReportCategory
+from app.models.verification import Verification, TrustStatus
+from app.schemas.index import (
     WeatherReportOut,
-    WeatherReportBase,
     WeatherReportCreate,
-    LocationSchema
+    LocationSchema,
+    VerificationUpdate,
 )
-from ...services.ingestion import IngestionService
-from ...services.verification import VerificationService
+from app.services.ingestion import IngestionService
+from app.services.verification import VerificationService
+from app.api.endpoints.websockets import broadcast_update
 
 router = APIRouter()
 
 # --- Helper to map DB models to Frontend-aligned Schema ---
-def map_report_to_out(report: Report, verification: Verification) -> WeatherReportOut:
-    # Convert PostGIS geometry to lat/lng
-    # In geoalchemy2, report.location is a WKBElement. We use .coords or .astext
-    # For this implementation, we assume access to the point coordinates
-    point = report.location
-    # Extracting lat/lng from WKT "POINT(lng lat)"
-    coords = point.astext.replace("POINT(", "").replace(")", "").split(",")
-
+def map_report_to_out(
+    report: Report,
+    verification: Verification,
+    latitude: float,
+    longitude: float,
+) -> WeatherReportOut:
     return WeatherReportOut(
         id=str(report.id),
         phenomenon=report.category.value,
         description=report.description,
         location=LocationSchema(
-            lat=float(coords[1]),
-            lng=float(coords[0]),
+            lat=latitude,
+            lng=longitude,
             city=None, # To be populated by reverse geocoding in a later step
             state=None,
         ),
@@ -48,13 +45,12 @@ def map_report_to_out(report: Report, verification: Verification) -> WeatherRepo
 @router.post("/", status_code=status.HTTP_201_CREATED)
 async def submit_report(
     report_in: WeatherReportCreate,
-    current_user=Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Submit a weather report (Citizens)"""
+    """Accept anonymous citizen reports and broadcast a canonical map record."""
     service = IngestionService(db)
     report, verification = await service.process_report(
-        user_id=current_user.id,
+        user_id=None,
         category=report_in.phenomenon,
         description=report_in.description,
         lat=report_in.location.lat,
@@ -62,59 +58,86 @@ async def submit_report(
         media_url=None, # Logic to handle file upload would go here
         raw_text=None
     )
+
+    report_out = map_report_to_out(
+        report,
+        verification,
+        report_in.location.lat,
+        report_in.location.lng,
+    )
+    await broadcast_update({
+        "type": "NEW_REPORT",
+        "data": report_out.model_dump(mode="json"),
+    })
+
     return {"report_id": report.id, "initial_status": verification.status.value}
 
 @router.get("/public", response_model=List[WeatherReportOut])
 async def get_public_reports(db: Session = Depends(get_db)):
     """Get trust-scored reports for the public map. Excludes Flagged reports."""
-    # Join Report and Verification
-    results = db.query(Report, Verification).join(
-        Verification, Report.id == Verification.report_id
-    ).filter(
+    results = db.query(
+        Report,
+        Verification,
+        func.ST_Y(Report.location),
+        func.ST_X(Report.location),
+    ).join(Verification, Verification.report_id == Report.id).filter(
         Verification.status != TrustStatus.FLAGGED
     ).all()
-
-    return [map_report_to_out(r, v) for r, v in results]
+    return [map_report_to_out(report, verification, lat, lng) for report, verification, lat, lng in results]
 
 @router.get("/admin", response_model=List[WeatherReportOut])
 async def get_admin_reports(
     status: Optional[str] = Query(None),
     phenomenon: Optional[str] = Query(None),
     db: Session = Depends(get_db),
-    current_user=Depends(RoleChecker([UserRole.ANALYST, UserRole.AUTHORITY]))
 ):
-    """Get all reports with advanced filtering for the Intelligence Console."""
-    query = db.query(Report).join(Verification)
+    """Get reports with advanced filtering for the temporary development console."""
+    query = db.query(
+        Report,
+        Verification,
+        func.ST_Y(Report.location),
+        func.ST_X(Report.location),
+    ).join(Verification, Verification.report_id == Report.id)
 
     if status:
-        query = query.filter(Verification.status == status)
+        normalized_status = status.strip().upper()
+        try:
+            query = query.filter(Verification.status == TrustStatus(normalized_status))
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail="Unknown report status") from exc
     if phenomenon:
-        query = query.filter(Report.category == phenomenon)
+        try:
+            query = query.filter(Report.category == ReportCategory(phenomenon.strip().lower()))
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail="Unknown report phenomenon") from exc
 
     results = query.all()
-
-    # To avoid N+1, we'd ideally use joinedload, but for now we'll fetch verifications
-    return [
-        map_report_to_out(r, db.query(Verification).filter_by(report_id=r.id).first())
-        for r in results
-    ]
+    return [map_report_to_out(report, verification, lat, lng) for report, verification, lat, lng in results]
 
 @router.patch("/{report_id}/verify")
 async def verify_report(
     report_id: int,
-    status: TrustStatus,
-    notes: Optional[str] = None,
+    update: VerificationUpdate,
     db: Session = Depends(get_db),
-    current_user=Depends(RoleChecker([UserRole.ANALYST, UserRole.AUTHORITY]))
 ):
     """Verify or flag a report. Updates trust score and logs action."""
     service = VerificationService(db)
-    updated_verification = service.verify_report(
-        report_id=report_id,
-        status=status,
-        reviewer_id=current_user.id,
-        notes=notes
-    )
+    try:
+        updated_verification = service.update_review(
+            report_id=report_id,
+            status=update.status,
+            reviewer_id=None,
+            notes=update.notes,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
-    report = db.query(Report).filter(Report.id == report_id).first()
-    return map_report_to_out(report, updated_verification)
+    row = db.query(
+        Report,
+        func.ST_Y(Report.location),
+        func.ST_X(Report.location),
+    ).filter(Report.id == report_id).first()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Report not found")
+    report, latitude, longitude = row
+    return map_report_to_out(report, updated_verification, latitude, longitude)

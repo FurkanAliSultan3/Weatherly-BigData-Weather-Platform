@@ -1,5 +1,7 @@
 export type Phenomenon = 'Rain' | 'Flood' | 'Storm' | 'Heatwave' | 'Fog' | 'Wind' | 'Hail' | 'Other';
-export type ReportStatus = 'submitted' | 'ai_analysis' | 'under_review' | 'verified' | 'suspicious' | 'flagged';
+export type ReportStatus =
+  | 'submitted' | 'ai_analysis' | 'under_review' | 'likely_genuine' | 'verified' | 'suspicious' | 'flagged'
+  | 'VERIFIED' | 'LIKELY' | 'UNVERIFIED' | 'FLAGGED';
 export type SourceType = 'citizen' | 'official' | 'sensor' | 'satellite';
 
 export interface WeatherReport {

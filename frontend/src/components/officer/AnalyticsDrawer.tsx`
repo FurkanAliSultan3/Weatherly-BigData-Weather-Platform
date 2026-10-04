@@ -1,0 +1,159 @@
+import React, { useState, useEffect } from 'react';
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  BarChart, Bar, Cell, PieChart, Pie
+} from 'recharts';
+import { reportApi } from '../../api/client';
+
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-brand-off-surface border border-brand-off-hairline p-3 rounded-xl shadow-2xl backdrop-blur-md">
+        <p className="text-[10px] font-bold text-brand-off-muted uppercase mb-1">{label}</p>
+        <p className="text-sm font-mono font-bold text-brand-off-primary">
+          {payload[0].value} {payload[0].name === 'count' ? 'Events' : ''}
+        </p>
+      </div>
+    );
+  }
+  return null;
+};
+
+const AnalyticsDrawer: React.FC = () => {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [timeRange, setTimeRange] = useState('7d');
+
+  useEffect(() => {
+    const fetchCharts = async () => {
+      try {
+        // We use the newly created analytics.py endpoint
+        const response = await reportApi.getCharts();
+        setData(response);
+      } catch (e) {
+        console.error("Error fetching chart data", e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchCharts();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full w-full gap-2">
+        <div className="w-2 h-2 bg-cyan-500 rounded-full animate-bounce" />
+        <div className="w-2 h-2 bg-cyan-500 rounded-full animate-bounce delay-75" />
+        <div className="w-2 h-2 bg-cyan-500 rounded-full animate-bounce delay-150" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 h-full w-full">
+      {/* 1. Time-Series Line Chart */}
+      <div className="flex flex-col space-y-4">
+        <div className="flex items-center justify-between">
+          <h4 className="text-xs font-black uppercase tracking-widest text-brand-off-muted">Volume Over Time</h4>
+          <div className="flex gap-1 bg-brand-off-canvas/20 p-1 rounded-lg border border-brand-off-hairline">
+            {['24h', '7d', '30d'].map(range => (
+              <button
+                key={range}
+                onClick={() => setTimeRange(range)}
+                className={`px-2 py-1 text-[9px] font-bold rounded transition-all ${
+                  timeRange === range ? 'bg-brand-off-primary text-white' : 'text-brand-off-body hover:text-brand-off-ink'
+                }`}
+              >
+                {range}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="h-32 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={data?.timeSeries}>
+              <defs>
+                <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#38BDF8" stopOpacity={0.3}/>
+                  <stop offset="95%" stopColor="#38BDF8" stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#1F293D" vertical={false} />
+              <XAxis dataKey="date" hide />
+              <YAxis hide />
+              <Tooltip content={<CustomTooltip />} />
+              <Area
+                type="monotone"
+                dataKey="count"
+                stroke="#38BDF8"
+                fillOpacity={1}
+                fill="url(#colorCount)"
+                strokeWidth={2}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* 2. Categorical Distribution Bar Chart */}
+      <div className="flex flex-col space-y-4">
+        <h4 className="text-xs font-black uppercase tracking-widest text-brand-off-muted">Event Distribution</h4>
+        <div className="h-32 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={data?.categoryDistribution} layout="vertical">
+              <XAxis type="number" hide />
+              <YAxis
+                dataKey="category"
+                type="category"
+                width={80}
+                tick={{fill: '#8CA0B5', fontSize: 10, fontWeight: 'bold'}}
+                axisLine={false}
+                tickLine={false
+              }}
+              <Tooltip content={<CustomTooltip />} />
+              <Bar dataKey="count" fill="#38BDF8" radius={[0, 4, 4, 0]} barSize={12} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* 3. Verification Status Donut Chart */}
+      <div className="flex flex-col space-y-4">
+        <h4 className="text-xs font-black uppercase tracking-widest text-brand-off-muted">Trust Distribution</h4>
+        <div className="h-32 w-full relative">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={data?.statusDistribution}
+                cx="50%"
+                cy="50%"
+                innerRadius={30}
+                outerRadius={45}
+                paddingAngle={5}
+                dataKey="count"
+              >
+                {data?.statusDistribution.map((entry: any, index: number) => (
+                  <Cell
+                    key={`cell-${index}`}
+                    fill={
+                      entry.status === 'verified' ? '#10B981' :
+                      entry.status === 'flagged' ? '#EF4444' : '#F59E0B'
+                    }
+                  />
+                ))}
+              </Pie>
+              <Tooltip content={<CustomTooltip />} />
+            </PieChart>
+          </ResponsiveContainer>
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <span className="text-lg font-black text-brand-off-ink font-mono">
+              {data ? Math.round((data.statusDistribution[0]?.count || 0) / (data.statusDistribution.reduce((a:any, b:any) => a + b.count, 0) || 1) * 100) : 0}%
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default AnalyticsDrawer;

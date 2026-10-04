@@ -1,7 +1,9 @@
 from pydantic import BaseModel, Field
 from typing import List, Optional
 from datetime import datetime
-from .models.user import UserRole
+from app.models.user import UserRole
+from app.models.report import ReportCategory
+from app.models.verification import TrustStatus
 
 # --- User Schemas ---
 
@@ -24,6 +26,7 @@ class UserOut(UserBase):
 class Token(BaseModel):
     access_token: str
     token_type: str
+    user: UserOut
 
 class TokenData(BaseModel):
     user_id: Optional[str] = None
@@ -38,12 +41,16 @@ class LocationSchema(BaseModel):
     state: Optional[str] = None
 
 class WeatherReportBase(BaseModel):
-    phenomenon: str
+    phenomenon: ReportCategory
     description: str
     location: LocationSchema
 
 class WeatherReportCreate(WeatherReportBase):
     pass
+
+class VerificationUpdate(BaseModel):
+    status: TrustStatus
+    notes: Optional[str] = None
 
 class WeatherReportOut(BaseModel):
     id: str # Cast from int to string for frontend compatibility

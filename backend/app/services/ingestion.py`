@@ -1,0 +1,49 @@
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
+from .models.report import Report
+from .schemas import ReportCreate
+import uuid
+
+class IngestionService:
+    def __init__(self, db: AsyncSession):
+        self.db = db
+
+    async def check_for_duplicates(self, lat: float, lon: float, category: str) -> bool:
+        """
+        Deduplication Logic: Checks if a report of the same category exists
+        within 5km and 30 minutes.
+        """
+        # PostGIS ST_DWithin check for 5000 meters
+        query = text("""
+            SELECT id FROM reports
+            WHERE category = :category
+            AND ST_DWithin(location, ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography, 5000)
+            AND created_at > NOW() - INTERVAL '30 minutes'
+            LIMIT 1
+        """)
+        result = await self.db.execute(query, {"category": category, "lon": lon, "lat": lat})
+        return result.fetchone() is not None
+
+    async def process_report(self, report_in: ReportCreate, user_id: int = None, media_url: str = None):
+        is_duplicate = await self.check_for_duplicates(
+            report_in.latitude, report_in.longitude, report_in.category
+        )
+
+        # Create report record
+        # Note: location is handled by the Postgres trigger trg_update_reports_geography
+        new_report = Report(
+            user_id=user_id,
+            category=report_in.category,
+            description=report_in.description,
+            latitude=report_in.latitude,
+            longitude=report_in.longitude,
+            intensity_score=report_in.intensity_score,
+            media_url=media_url,
+            is_duplicate=is_duplicate,
+            status="PENDING" if not is_duplicate else "DUPLICATE"
+        )
+
+        self.db.add(new_//S_report)
+        await self.db.commit()
+        await self.db.refresh(new_report)
+        return new_report

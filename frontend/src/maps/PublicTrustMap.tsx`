@@ -1,0 +1,175 @@
+import React, { useState, useEffect } from 'react';
+import { MapContainer, TileLayer, CircleMarker, LayersControl } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import 'leaflet.heat';
+import { useMap } from 'react-leaflet';
+import { reportApi } from '../api/client';
+import { WeatherReport } from '../services/mockData';
+
+interface PublicTrustMapProps {
+  isDarkTheme?: boolean;
+  onReportSelect: (report: WeatherReport | null) => void;
+}
+
+const Heatmap = ({ reports }: { reports: WeatherReport[] }) => {
+  const map = useMap();
+  const heatLayerRef = React.useRef<any>(null);
+
+  useEffect(() => {
+    if (!map) return;
+    if (heatLayerRef.current) {
+      map.removeLayer(heatLayerRef.current);
+    }
+    const heatData = reports.map(r => {
+      let intensity = 0.5;
+      if (r.status === 'flagged' || r.status === 'suspicious') intensity = 1.0;
+      if (r.status === 'verified') intensity = 0.7;
+      return [r.location.lat, r.location.lng, intensity];
+    });
+    // @ts-ignore
+    heatLayerRef.current = L.heatLayer(heatData, {
+      radius: 25,
+      blur: 15,
+      maxZoom: 10,
+      gradient: { 0.4: 'blue', 0.6: 'cyan', 0.7: 'lime', 0.8: 'yellow', 1.0: 'red' }
+    }).addTo(map);
+    return () => {
+      if (heatLayerRef.current) map.removeLayer(heatLayerRef.current);
+    };
+  }, [map, reports]);
+  return null;
+};
+
+const PublicTrustMap: React.FC<PublicTrustMapProps> = ({ isDarkTheme = false, onReportSelect }) => {
+  const [reports, setReports] = useState<WeatherReport[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [radarOpacity, setRadarOpacity] = useState(0.6);
+
+  useEffect(() => {
+    const fetchReports = async () => {
+      try {
+        const data = await reportApi.getPublic();
+        setReports(data);
+      } catch (e) {
+        console.error("Error fetching public reports", e);
+        import('../services/mockData').then(m => setReports(m.mockReports));
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchReports();
+  }, []);
+
+  const getColor = (status: string) => {
+    switch(status) {
+      case 'verified': return '#22c55e';
+      case 'likely_genuine': return '#eab308';
+      case 'under_review': '#3b82f6';
+      case 'suspicious':
+      case 'flagged': return '#ef4444';
+      default: return '#94a3b8';
+    }
+  };
+
+  return (
+    <div className="h-full w-full relative">
+      <div className="absolute top-6 right-6 z-[1000] bg-brand-off-surface/80 backdrop-blur-md p-4 rounded-2xl border border-brand-off-hairline shadow-2xl w-64 space-y-6">
+        <div className="space-y-3">
+          <h4 className="text-[10px] font-black uppercase tracking-widest text-brand-off-muted">Map Intelligence</h4>
+          <div className="flex flex-col gap-2">
+             <p className="text-[10px] font-bold text-brand-off-ink mb-1">Base Layers</p>
+             <div className="text-[10px] text-brand-off-body italic">Use map control for layers</div>
+          </div>
+          <div className="pt-4 border-t border-brand-off-hairline space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-brand-off-ink">Radar Overlay</span>
+              <div className="w-8 h-4 bg-brand-off-primary rounded-full relative cursor-pointer">
+                <div className="absolute right-1 top-1 w-2 h-2 bg-white rounded-full" />
+              </div>
+            </div>
+            <div className="space-y-2 pt-2">
+              <div className="flex justify-between text-[10px] font-bold text-brand-off-muted uppercase">
+                <span>Radar Opacity</span>
+                <span>{Math.round(radarOpacity * 100)}%</span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.1"
+                value={radarOpacity}
+                onChange={(e) => setRadarOpacity(parseFloat(e.target.value))}
+                className="w-full h-1 bg-brand-off-hairline rounded-lg appearance-none cursor-pointer accent-brand-off-primary"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {loading && (
+        <div className="absolute inset-0 z-[1000] bg-brand-canvas/50 backdrop-blur-sm flex items-center justify-center">
+          <div className="flex flex-col items-center gap-3">
+            <div className="h-8 w-8 border-2 border-brand-primary border-t-transparent rounded-full animate-spin" />
+            <p className="text-xs font-bold text-brand-muted uppercase tracking-widest">Loading Intelligence...</p>
+          </div>
+        </div>
+      )}
+
+      <MapContainer
+        center={[20.5937, 78.9629]}
+        zoom={5}
+        className="h-full w-full z-0"
+        style={{ height: '100%', width: '100%' }}
+        zoomControl={false}
+      >
+        <LayersControl position="topright">
+          <LayersControl.BaseLayer checked name="Standard View">
+            <TileLayer
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              attribution='&copy; OpenStreetMap contributors'
+            />
+          </LayersControl.BaseLayer>
+          <LayersControl.BaseLayer name="Satellite View">
+            <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" />
+          </LayersControl.BaseLayer>
+          <LayersControl.BaseLayer name="Terrain View">
+            <TileLayer url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png" />
+          </LayersControl.BaseLayer>
+
+          <LayersControl.Overlay checked name="Heatmap Density">
+            <Heatmap reports={reports} />
+          </LayersControl.Overlay>
+
+          <LayersControl.Overlay checked name="Doppler Radar">
+            <TileLayer
+              url="https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=YOUR_API_KEY"
+              opacity={radarOpacity}
+            />
+          </LayersControl.Overlay>
+        </LayersControl>
+
+        {reports.map(report => (
+          <CircleMarker
+            key={report.id}
+            center={[report.location.lat, report.location.lng]}
+            radius={7}
+            eventHandlers={{
+              click: () => {
+                onReportSelect(report);
+              },
+            }}
+            pathOptions={{
+              color: getColor(report.status),
+              fillColor: getColor(report.status),
+              fillOpacity: 0.7,
+              weight: 2,
+            }}
+          />
+        ))}
+      </MapContainer>
+    </div>
+  );
+};
+
+export default PublicTrustMap;

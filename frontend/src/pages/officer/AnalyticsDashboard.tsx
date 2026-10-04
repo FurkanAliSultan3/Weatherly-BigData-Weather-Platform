@@ -14,34 +14,37 @@ import {
   Line,
   Legend
 } from 'recharts';
-import { mockReports, mockKPIs } from '../../services/mockData';
-import { Activity, TrendingUp, MapPin, PieChart as PieChartIcon } from 'lucide-react';
+import { Activity, MapPin, PieChart as PieChartIcon, ShieldCheck, Download } from 'lucide-react';
+import { getMockChartData, getMockKPIs } from '../../data/mockReports';
+import { getOfficerReports, useOfficerStoreVersion } from '../../data/officerStore';
 
 const AnalyticsDashboard: React.FC = () => {
-  // Process report volume by phenomenon
-  const phenomenonData = Object.entries(
-    mockReports.reduce((acc: any, r) => {
-      acc[r.phenomenon] = (acc[r.phenomenon] || 0) + 1;
-      return acc;
-    }, {})
-  ).map(([name, value]) => ({ name, value }));
+  const storeVersion = useOfficerStoreVersion();
+  const reports = getOfficerReports();
+  const chartData = getMockChartData(reports);
+  void storeVersion;
+  const kpis = getMockKPIs(reports);
 
-  // Process report volume by status
-  const statusData = Object.entries(
-    mockReports.reduce((acc: any, r) => {
-      acc[r.status] = (acc[r.status] || 0) + 1;
-      return acc;
-    }, {})
-  ).map(([name, value]) => ({ name, value }));
-
-  // Mock time-series data for the last 7 days
-  const timeSeriesData = Array.from({ length: 7 }).map((_, i) => ({
-    day: `Day ${i + 1}`,
-    reports: Math.floor(Math.random() * 50) + 20,
-    verified: Math.floor(Math.random() * 30) + 10,
-  }));
+  const phenomenonData = chartData.byPhenomenon;
+  const statusData = chartData.byStatus;
+  const timeSeriesData = chartData.timeline;
 
   const COLORS = ['#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#64748b'];
+
+  const exportCsv = () => {
+    const rows = [
+      ['section', 'name', 'value'],
+      ...phenomenonData.map(item => ['phenomenon', item.name, item.value]),
+      ...statusData.map(item => ['status', item.name, item.value]),
+      ...timeSeriesData.map(item => ['day', item.day, item.reports]),
+    ];
+    const csv = rows.map(row => row.map(value => `"${String(value).replaceAll('"', '""')}"`).join(',')).join('\r\n');
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    link.download = 'weatherly-analytics.csv';
+    link.click();
+    URL.revokeObjectURL(link.href);
+  };
 
   return (
     <div className="space-y-8">
@@ -50,13 +53,24 @@ const AnalyticsDashboard: React.FC = () => {
           <h1 className="text-2xl font-bold text-white tracking-tight">Intelligence Analytics</h1>
           <p className="text-slate-400 text-sm">National weather event distribution and system performance.</p>
         </div>
-        <div className="flex gap-3">
-          <select className="bg-slate-900 border border-slate-800 text-slate-300 text-xs px-4 py-2 rounded-xl outline-none">
-            <option>Last 7 Days</option>
-            <option>Last 30 Days</option>
-            <option>Last Quarter</option>
-          </select>
+        <div className="text-xs text-slate-400">
+          <span>Latest 7 days</span>
         </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        {[
+          { label: 'Total ingested', value: kpis.totalReports },
+          { label: 'Verified', value: kpis.verifiedReports },
+          { label: 'Likely', value: kpis.likelyReports },
+          { label: 'Unverified', value: kpis.unverifiedReports },
+          { label: 'Flagged', value: kpis.flaggedReports },
+        ].map(metric => (
+          <div key={metric.label} className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{metric.label}</p>
+            <p className="mt-2 font-mono text-3xl font-bold text-white">{metric.value}</p>
+          </div>
+        ))}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -147,30 +161,32 @@ const AnalyticsDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Geographic Activity Heatmap (Mock) */}
+        {/* Verification totals */}
         <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl">
           <div className="flex items-center gap-2 mb-6">
             <MapPin size={18} className="text-cyan-400" />
-            <h3 className="text-sm font-bold text-slate-300 uppercase tracking-widest">Regional Activity</h3>
+            <h3 className="text-sm font-bold text-slate-300 uppercase tracking-widest">Reports by status</h3>
           </div>
           <div className="space-y-4">
-            {['Maharashtra', 'Delhi', 'Karnataka', 'West Bengal', 'Tamil Nadu'].map((state, i) => (
-              <div key={state} className="space-y-1">
+            {statusData.map((item) => (
+              <div key={item.name} className="space-y-1">
                 <div className="flex justify-between text-xs mb-1">
-                  <span className="text-slate-300 font-medium">{state}</span>
-                  <span className="text-slate-500">{Math.floor(Math.random() * 100)} reports</span>
+                  <span className="text-slate-300 font-medium capitalize">{item.name.replaceAll('_', ' ')}</span>
+                  <span className="text-slate-500">{item.value} reports</span>
                 </div>
                 <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
                   <div
                     className="h-full bg-cyan-500 rounded-full"
-                    style={{ width: `${Math.random() * 100}%` }}
+                    style={{ width: `${Math.max(...statusData.map(status => status.value), 1) ? item.value / Math.max(...statusData.map(status => status.value), 1) * 100 : 0}%` }}
                   />
                 </div>
               </div>
             ))}
             <div className="pt-6 flex items-center justify-between text-xs text-slate-500 italic">
-              <span>* Data aggregated from last 24h</span>
-              <button className="text-cyan-400 hover:underline">Export CSV</button>
+              <span>Aggregated from stored reports</span>
+              <button onClick={exportCsv} className="inline-flex items-center gap-1 text-cyan-400 hover:underline">
+                <Download size={14} /> Export CSV
+              </button>
             </div>
           </div>
         </div>

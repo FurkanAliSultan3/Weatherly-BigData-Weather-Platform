@@ -1,0 +1,129 @@
+import React, { useState } from 'react';
+import { Calendar, Filter, MapPin, ShieldCheck, AlertTriangle, Zap } from 'lucide-react';
+
+const FilterPanel: React.FC = () => {
+  const [filters, setFilters] = useState({
+    category: ['Rain', 'Flood'],
+    status: 'all',
+    state: 'all'
+  });
+
+  const categories = [
+    { id: 'Rain', label: 'Heavy Rainfall', icon: '🌧️', count: 42 },
+    { id: 'Thunder', label: 'Thunderstorms', icon: '⛈️', count: 12 },
+    { id: 'Flood', label: 'Flooding', icon: '🌊', count: 28 },
+    { id: 'Heat', label: 'Heatwaves', icon: '🔥', count: 5 },
+    { id: 'Fog', label: 'Dense Fog', icon: '🌫️', count: 18 },
+    { id: 'Wind', label: 'High Winds', icon: '🌪️', count: 9 },
+    { id: 'Cyclone', label: 'Cyclonic', icon: '🌀', count: 2 },
+  ];
+
+  return (
+    <aside className="w-80 border-r border-brand-off-hairline bg-brand-off-surface/50 p-6 flex flex-col gap-8 overflow-y-auto h-full custom-scrollbar">
+      {/* 1. Temporal Filters */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2 text-brand-off-primary mb-2">
+          <Calendar size={16} />
+          <h3 className="text-xs font-black uppercase tracking-widest">Temporal Constraints</h3>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          {['1h', '24h', '7d', 'Monsoon'].map(preset => (
+            <button
+              key={preset}
+              className="px-3 py-2 bg-brand-off-surface border border-brand-off-hairline rounded-lg text-[10px] font-bold text-brand-off-body hover:text-brand-off-ink hover:border-brand-off-primary transition-all"
+            >
+              {preset}
+            </button>
+          ))}
+        </div>
+        <div className="space-y-2">
+          <label className="text-[10px] text-brand-off-muted uppercase font-bold">Time-lapse Playback</label>
+          <input type="range" className="w-full h-1 bg-brand-off-hairline rounded-lg appearance-none cursor-pointer accent-brand-off-primary" />
+          <div className="flex justify-between text-[9px] font-mono text-brand-off-muted">
+            <span>T-0h</span>
+            <span>T-24h</span>
+            <span>T-168h</span>
+          </div>
+        </div>
+      </div>
+
+      {/* 2. Category Multi-select */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2 text-brand-off-primary mb-2">
+          <Filter size={16} />
+          <h3 className="text-xs font-black uppercase tracking-widest">Event Categories</h3>
+        </div>
+        <div className="flex flex-col gap-2">
+          {categories.map(cat => (
+            <button
+              key={cat.id}
+              onClick={() => {}}
+              className={`flex items-center justify-between p-3 rounded-xl border transition-all text-left ${
+                filters.category.includes(cat.id)
+                  ? 'bg-brand-off-primary/10 border-brand-off-primary text-brand-off-ink'
+                  : 'bg-brand-off-surface border-brand-off-hairline text-brand-off-body hover:border-brand-off-primary/50'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-lg">{cat.icon}</span>
+                <span className="text-xs font-bold">{cat.label}</span>
+              </div>
+              <span className="text-[10px] font-mono bg-brand-off-hairline px-2 py-0.5 rounded text-brand-off-muted">
+                {cat.count}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* 3. Spatial Filters */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2 text-brand-off-primary mb-2">
+          <MapPin size={16} />
+          <h3 className="text-xs font-black uppercase tracking-widest">Geospatial Filter</h3>
+        </div>
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <label className="text-[10px] text-brand-off-muted uppercase font-bold">State / UT</label>
+            <select className="w-full p-2 bg-brand-off-surface border border-brand-off-hairline rounded-lg text-xs text-brand-off-ink outline-none focus:border-brand-off-primary">
+              <option>All States</option>
+              <option>Maharashtra</option>
+              <option>Delhi NCR</option>
+              <option>Odisha</option>
+              <option>Kerala</option>
+            </select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-[10px] text-brand-off-muted uppercase font-bold">Radius (km)</label>
+            <div className="flex items-center gap-3">
+              <input type="range" min="1" max="100" className="flex-1 h-1 bg-brand-off-hairline rounded-lg appearance-none cursor-pointer accent-brand-off-primary" />
+              <span className="text-xs font-mono text-brand-off-ink w-8">50</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 4. Verification Status */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2 text-brand-off-primary mb-2">
+          <ShieldCheck size={16} />
+          <h3 className="text-xs font-black uppercase tracking-widest">Trust Status</h3>
+        </div>
+        <div className="grid grid-cols-1 gap-2">
+          {[
+            { id: 'verified', label: 'Verified Only', color: 'text-emerald-400' },
+            { id: 'pending', label: 'Pending AI Review', color: 'text-amber-400' },
+            { id: 'flagged', label: 'Flagged / Fake', color: 'text-rose-400' },
+          ].map(status => (
+            <label className="flex items-center gap-3 p-3 rounded-xl border border-brand-off-hairline bg-brand-off-surface cursor-pointer hover:bg-brand-off-surface-card/50 transition-all">
+              <input type="checkbox" className="rounded border-brand-off-hairline bg-brand-off-surface text-brand-off-primary focus:ring-0" />
+              <span className={`text-xs font-bold ${status.color}`}>{status.label}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+    </aside>
+  );
+};
+
+export default FilterPanel;

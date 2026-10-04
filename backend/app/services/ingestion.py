@@ -1,6 +1,7 @@
 import uuid
 from typing import Optional, Tuple
 from sqlalchemy.orm import Session
+from geoalchemy2.elements import WKTElement
 from ..models.report import Report, ReportCategory
 from ..models.verification import Verification, TrustStatus
 from ..core.config import settings
@@ -32,7 +33,7 @@ class IngestionService:
             user_id=user_id,
             category=category,
             description=description,
-            location=f"POINT({lon} {lat})", 
+            location=WKTElement(f"POINT({lon} {lat})", srid=4326),
             media_url=media_url,
             raw_text=raw_text,
             media_hash=media_hash
@@ -61,4 +62,3 @@ class IngestionService:
         # img = Image.open(requests.get(url, stream=True).raw)
         # return str(imagehash.phash(img))
         return f"phash_{uuid.uuid4().hex[:16]}"
-

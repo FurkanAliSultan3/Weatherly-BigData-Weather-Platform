@@ -1,10 +1,163 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@config "../tailwind.config.js";
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
-/* Leaflet Map Styles Override */
+@keyframes alert-radius-pulse {
+  0%, 100% { fill-opacity: 0.10; stroke-opacity: 0.72; }
+  50% { fill-opacity: 0.22; stroke-opacity: 1; }
+}
+
+.leaflet-interactive.alert-radius-pulse {
+  animation: alert-radius-pulse 2.6s ease-in-out infinite;
+}
+
+@theme inline {
+  --color-brand-canvas: var(--color-canvas);
+  --color-brand-surface: var(--color-surface-card);
+  --color-brand-surface-card: var(--color-surface-card);
+  --color-brand-primary: var(--color-primary);
+  --color-brand-primary-active: var(--color-primary-active);
+  --color-brand-ink: var(--color-ink);
+  --color-brand-body: var(--color-body);
+  --color-brand-muted: var(--color-muted);
+  --color-brand-hairline: var(--color-hairline);
+
+  --color-brand-off-canvas: var(--color-canvas);
+  --color-brand-off-surface: var(--color-surface-card);
+  --color-brand-off-surface-card: var(--color-surface-card);
+  --color-brand-off-primary: var(--color-primary);
+  --color-brand-off-primary-active: var(--color-primary-active);
+  --color-brand-off-ink: var(--color-ink);
+  --color-brand-off-body: var(--color-body);
+  --color-brand-off-muted: var(--color-muted);
+  --color-brand-off-hairline: var(--color-hairline);
+}
+
+@layer base {
+  :root {
+    /* Public - Warm Editorial Palette */
+    --color-canvas: #faf9f5;
+    --color-surface-card: #efe9de;
+    --color-primary: #cc785c;
+    --color-primary-active: #a9583e;
+    --color-ink: #141413;
+    --color-body: #3d3d3a;
+    --color-muted: #6c6a64;
+    --color-hairline: #e6dfd8;
+  }
+
+  .dark {
+    /* Public - Dark Mode Palette */
+    --color-canvas: #0f172a;
+    --color-surface-card: #1e293b;
+    --color-primary: #fb923c;
+    --color-primary-active: #f97316;
+    --color-ink: #f8fafc;
+    --color-body: #cbd5e1;
+    --color-muted: #94a3b8;
+    --color-hairline: #334155;
+  }
+
+  .theme-officer {
+    --color-canvas: #f5f5f4;
+    --color-surface-card: #ffffff;
+    --color-primary: #0284c7;
+    --color-primary-active: #0369a1;
+    --color-ink: #1c1917;
+    --color-body: #44403c;
+    --color-muted: #78716c;
+    --color-hairline: #e7e5e4;
+    --color-severe: #dc2626;
+    --color-warning: #d97706;
+    --color-moderate: #ca8a04;
+    --color-verified: #059669;
+    --color-fake: #9333ea;
+  }
+
+  .dark .theme-officer {
+    --color-canvas: #0b0f17;
+    --color-surface-card: #111827;
+    --color-primary: #38bdf8;
+    --color-primary-active: #0284c7;
+    --color-ink: #f9fafb;
+    --color-body: #9ca3af;
+    --color-muted: #6b7280;
+    --color-hairline: #1f293d;
+    --color-severe: #ef4444;
+    --color-warning: #f59e0b;
+    --color-moderate: #ecc94b;
+    --color-verified: #10b981;
+    --color-fake: #a855f7;
+  }
+
+  body {
+    background-color: var(--color-canvas);
+    color: var(--color-body);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  h1, h2, h3, .display-serif {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+  }
+
+  .font-mono {
+    font-family: 'IBM Plex Mono', monospace;
+  }
+}
+
+@layer components {
+  .glass-card {
+    background-color: var(--color-surface-card);
+    border: 1px solid var(--color-hairline);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+  }
+
+  .btn-primary {
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.375rem;
+    font-weight: 700;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    border: none;
+    background-color: var(--color-primary);
+    color: white;
+  }
+  .btn-primary:active {
+    transform: scale(0.95);
+  }
+  .btn-primary:hover {
+    background-color: var(--color-primary-active);
+  }
+
+  .btn-secondary {
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.375rem;
+    font-weight: 700;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    background-color: transparent;
+    color: var(--color-ink);
+    border: 1px solid var(--color-hairline);
+  }
+  .btn-secondary:active {
+    transform: scale(0.95);
+  }
+  .btn-secondary:hover {
+    background-color: var(--color-surface-card);
+  }
+}
+
 .leaflet-container {
   width: 100%;
   height: 100%;
-  border-radius: 0.5rem;
+  border-radius: 1.5rem;
+  background: #e5e7eb;
+}
+
+.dark .leaflet-tile-pane {
+  filter: brightness(0.72) invert(1) hue-rotate(180deg) saturate(0.85) contrast(0.9);
 }

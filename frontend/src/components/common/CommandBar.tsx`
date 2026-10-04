@@ -1,0 +1,89 @@
+import React, { useState, useEffect } from 'react';
+import { Search, Bell, Activity, Globe, Clock } from 'lucide-react';
+
+const CommandBar: React.FC = () => {
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Format to IST (UTC+5:30)
+  const formatIST = (date: Date) => {
+    return date.toLocaleTimeString('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    });
+  };
+
+  return (
+    <header className="h-16 border-b border-brand-off-hairline bg-brand-off-surface backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-50">
+      {/* Left: Brand & Status */}
+      <div className="flex items-center gap-6">
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <div className="h-8 w-8 bg-brand-off-primary rounded-lg flex items-center justify-center shadow-lg shadow-brand-off-primary/20">
+              <Globe size={20} className="text-white" />
+            </div>
+            <div className="absolute inset-0 rounded-lg animate-ping bg-brand-off-primary opacity-20" />
+          </div>
+          <h1 className="text-sm font-black tracking-widest text-brand-off-ink uppercase">
+            National Weather <span className="text-brand-off-primary">Analytics</span>
+          </h1>
+        </div>
+
+        <div className="hidden lg:flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+          <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+          <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-tighter">Live Ingestion Active</span>
+        </div>
+      </div>
+
+      {/* Center: Global Search */}
+      <div className="hidden md:flex flex-1 max-w-xl mx-8">
+        <div className="relative w-full group">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-off-muted group-focus-within:text-brand-off-primary transition-colors" size={18} />
+          <input
+            type="text"
+            placeholder="Search by City, Hashtag (#MumbaiRains), or Lat/Long..."
+            className="w-full pl-12 pr-4 py-2 bg-brand-off-canvas border border-brand-off-hairline rounded-xl text-sm text-brand-off-ink outline-none focus:border-brand-off-primary focus:ring-1 focus:ring-brand-off-primary transition-all"
+          />
+        </div>
+      </div>
+
+      {/* Right: Quick Stats & Clock */}
+      <div className="flex items-center gap-6">
+        <div className="hidden xl:flex items-center gap-6 mr-6">
+          <div className="flex flex-col items-end">
+            <span className="text-[10px] text-brand-off-muted uppercase font-bold">Reports Processed</span>
+            <span className="text-xs font-mono font-bold text-brand-off-ink">142,850</span>
+          </div>
+          <div className="flex flex-col items-end">
+            <span className="text-[10px] text-brand-off-muted uppercase font-bold">AI Accuracy</span>
+            <span className="text-xs font-mono font-bold text-brand-off-primary">98.4%</span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-brand-off-surface border border-brand-off-hairline">
+            <Clock size={14} className="text-brand-off-muted" />
+            <span className="text-xs font-mono font-bold text-brand-off-ink">
+              {formatIST(currentTime)}
+            </span>
+          </div>
+          <div className="relative p-2 text-brand-off-muted hover:text-brand-off-ink cursor-pointer transition-colors">
+            <Bell size={20} />
+            <span className="absolute top-1 right-1 w-4 h-4 bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full">
+              14
+            </span>
+          </div>
+        </div>
+      </div>
+    </header>
+  );
+};
+
+export default CommandBar;
