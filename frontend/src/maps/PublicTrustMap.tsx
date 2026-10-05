@@ -125,7 +125,9 @@ const PublicTrustMap: React.FC<PublicTrustMapProps> = ({
             const color = getColor(report.status);
             const icon = divIcon({
               className: 'weather-report-pin',
-              html: `<span style="display:block;width:16px;height:16px;border:3px solid white;border-radius:50% 50% 50% 0;background:${color};transform:rotate(-45deg);box-shadow:0 2px 6px #0f172a80"></span>`,
+              html: `<div style="position:relative;width:16px;height:16px;">
+                        <span style="display:block;width:16px;height:16px;border:3px solid white;border-radius:50% 50% 50% 0;background:${color};transform:rotate(-45deg);box-shadow:0 2px 6px #0f172a80"></span>
+                     </div>`,
               iconSize: [18, 18],
               iconAnchor: [9, 16],
               popupAnchor: [0, -14],

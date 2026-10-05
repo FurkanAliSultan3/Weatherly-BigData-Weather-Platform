@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import PublicTrustMap from '../components/PublicTrustMap'; // Adjust path if needed
+import PublicTrustMap from '../../maps/PublicTrustMap';
 import { Activity, AlertTriangle, CheckCircle, Clock, FileText, ArrowUpRight, Search, TrendingUp, Shield, Radio, Waves, MapPin, Gauge } from 'lucide-react';
-import { useTheme } from '../context/ThemeContext';
-import { getMockKPIs } from '../data/mockReports';
+import { useTheme } from '../../context/ThemeContext';
+import { getMockKPIs } from '../../data/mockReports';
 
 const StatCard = ({ label, value, icon: Icon, color, trend }: any) => (
   <div className="p-6 rounded-3xl flex flex-col gap-3 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 group border border-stone-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">

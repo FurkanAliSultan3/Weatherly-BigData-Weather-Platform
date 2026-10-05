@@ -6,7 +6,11 @@ from .core.config import settings
 Base = declarative_base()
 
 database_url = make_url(settings.DATABASE_URL)
-if database_url.drivername == "postgresql+asyncpg":
+if database_url.drivername in {
+    "postgresql",
+    "postgresql+asyncpg",
+    "postgresql+psycopg",
+}:
     database_url = database_url.set(drivername="postgresql+psycopg2")
 
 engine = create_engine(database_url, echo=False, future=True)
