@@ -1,5 +1,5 @@
-@config "../tailwind.config.js";
 @import "tailwindcss";
+@config "../tailwind.config.js";
 @custom-variant dark (&:where(.dark, .dark *));
 
 @keyframes alert-radius-pulse {
